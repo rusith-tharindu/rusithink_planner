@@ -1257,14 +1257,23 @@ const Dashboard = () => {
           <div className="loading-spinner mx-auto mb-4"></div>
           <div className="text-slate-400">Loading...</div>
         </div>
+        )}
       </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-slate-950">
-      <div className="container mx-auto px-4 py-8">
-// Main Dashboard Component
+      
+      <Toaster 
+        theme="dark"
+        position="top-right"
+        toastOptions={{
+          style: {
+            background: '#1e293b',
+            border: '1px solid #334155',
+            color: '#f1f5f9'
+          }
+        }}
+      />
+    </div>
+  );
+};
 const Dashboard = () => {
   const { user, logout } = useAuth();
   const [tasks, setTasks] = useState([]);
