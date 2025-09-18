@@ -399,6 +399,20 @@ async def process_oauth_session(request: Request, response: Response):
             # Update name if needed
             if 'name' not in user_dict or not user_dict['name']:
                 user_dict['name'] = auth_data["name"]
+                
+            # Ensure all required fields exist
+            if 'first_name' not in user_dict:
+                user_dict['first_name'] = None
+            if 'last_name' not in user_dict:
+                user_dict['last_name'] = None
+            if 'phone' not in user_dict:
+                user_dict['phone'] = None
+            if 'company_name' not in user_dict:
+                user_dict['company_name'] = None
+            if 'registration_type' not in user_dict:
+                user_dict['registration_type'] = "oauth"
+            if 'password_hash' not in user_dict:
+                user_dict['password_hash'] = None
         else:
             # Create new client user
             user_dict = {
