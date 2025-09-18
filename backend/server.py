@@ -866,22 +866,319 @@ async def get_unread_notifications_count(request: Request):
     
     try:
         if user.role == UserRole.CLIENT:
-            # Client sees count of tasks with unread updates
+            # Client sees count of tasks with unread updates + unread chat messages
             pipeline = [
                 {"$match": {"created_by": user.id, "unread_updates": {"$gt": 0}}},
                 {"$group": {"_id": None, "total_unread": {"$sum": "$unread_updates"}}}
             ]
             
             result = await db.tasks.aggregate(pipeline).to_list(1)
-            unread_count = result[0]["total_unread"] if result else 0
+            unread_updates = result[0]["total_unread"] if result else 0
             
-            return {"unread_count": unread_count}
+            # Add unread chat messages
+            unread_messages = await db.chat_messages.count_documents({
+                "recipient_id": user.id,
+                "is_read": False
+            })
+            
+            return {"unread_count": unread_updates + unread_messages}
         else:
-            # Admin doesn't have notifications for now
-            return {"unread_count": 0}
+            # Admin sees unread chat messages from clients
+            unread_messages = await db.chat_messages.count_documents({
+                "recipient_id": user.id,
+                "is_read": False
+            })
+            return {"unread_count": unread_messages}
             
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch notification count: {str(e)}")
+
+# Chat System Routes
+@api_router.post("/chat/messages", response_model=ChatMessage)
+async def send_message(message_data: ChatMessageCreate, request: Request):
+    """Send a chat message"""
+    user = await require_auth(request)
+    
+    try:
+        # Get recipient user info
+        recipient = await db.users.find_one({"id": message_data.recipient_id})
+        if not recipient:
+            raise HTTPException(status_code=404, detail="Recipient not found")
+        
+        recipient = parse_from_mongo(recipient)
+        
+        # Create message
+        message = ChatMessage(
+            task_id=message_data.task_id,
+            sender_id=user.id,
+            sender_name=user.name,
+            sender_role=user.role.value,
+            recipient_id=message_data.recipient_id,
+            content=message_data.content,
+            message_type="text"
+        )
+        
+        # Save to database
+        message_data_mongo = prepare_for_mongo(message.dict())
+        await db.chat_messages.insert_one(message_data_mongo)
+        
+        return message
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to send message: {str(e)}")
+
+@api_router.post("/chat/upload")
+async def upload_chat_file(
+    file: UploadFile = File(...),
+    recipient_id: str = Form(...),
+    task_id: str = Form(None),
+    content: str = Form(""),
+    request: Request = None
+):
+    """Upload file/image for chat"""
+    user = await require_auth(request)
+    
+    try:
+        # Validate file type and size
+        if file.size > 10 * 1024 * 1024:  # 10MB limit
+            raise HTTPException(status_code=400, detail="File too large (max 10MB)")
+        
+        # Generate unique filename
+        file_ext = Path(file.filename).suffix
+        unique_filename = f"{uuid.uuid4()}{file_ext}"
+        file_path = UPLOADS_DIR / unique_filename
+        
+        # Save file
+        async with aiofiles.open(file_path, 'wb') as f:
+            content_data = await file.read()
+            await f.write(content_data)
+        
+        # Determine message type
+        mime_type, _ = mimetypes.guess_type(file.filename)
+        message_type = "image" if mime_type and mime_type.startswith("image/") else "file"
+        
+        # Create chat message with file
+        message = ChatMessage(
+            task_id=task_id,
+            sender_id=user.id,
+            sender_name=user.name,
+            sender_role=user.role.value,
+            recipient_id=recipient_id,
+            content=content or f"Shared {message_type}: {file.filename}",
+            message_type=message_type,
+            file_url=f"/uploads/{unique_filename}",
+            file_name=file.filename,
+            file_size=file.size
+        )
+        
+        # Save to database
+        message_data_mongo = prepare_for_mongo(message.dict())
+        await db.chat_messages.insert_one(message_data_mongo)
+        
+        return message
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to upload file: {str(e)}")
+
+@api_router.get("/chat/messages", response_model=List[ChatMessage])
+async def get_chat_messages(request: Request, task_id: Optional[str] = None, limit: int = 50):
+    """Get chat messages for current user"""
+    user = await require_auth(request)
+    
+    try:
+        # Build query filter
+        if task_id:
+            # Get messages for specific task
+            message_filter = {
+                "task_id": task_id,
+                "$or": [
+                    {"sender_id": user.id},
+                    {"recipient_id": user.id}
+                ]
+            }
+        else:
+            # Get all messages for user (general chat)
+            message_filter = {
+                "$or": [
+                    {"sender_id": user.id},
+                    {"recipient_id": user.id}
+                ]
+            }
+        
+        # Get messages
+        messages = await db.chat_messages.find(message_filter).sort("created_at", -1).limit(limit).to_list(limit)
+        parsed_messages = [parse_from_mongo(msg) for msg in messages]
+        
+        # Mark messages as read if user is recipient
+        await db.chat_messages.update_many(
+            {"recipient_id": user.id, "is_read": False},
+            {"$set": {"is_read": True}}
+        )
+        
+        # Return in chronological order (oldest first)
+        parsed_messages.reverse()
+        return [ChatMessage(**msg) for msg in parsed_messages]
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch messages: {str(e)}")
+
+@api_router.get("/chat/conversations")
+async def get_conversations(request: Request):
+    """Get list of conversations for current user"""
+    user = await require_auth(request)
+    
+    try:
+        # Get unique conversation partners
+        pipeline = [
+            {
+                "$match": {
+                    "$or": [
+                        {"sender_id": user.id},
+                        {"recipient_id": user.id}
+                    ]
+                }
+            },
+            {
+                "$group": {
+                    "_id": {
+                        "$cond": [
+                            {"$eq": ["$sender_id", user.id]},
+                            "$recipient_id",
+                            "$sender_id"
+                        ]
+                    },
+                    "last_message": {"$last": "$$ROOT"},
+                    "unread_count": {
+                        "$sum": {
+                            "$cond": [
+                                {
+                                    "$and": [
+                                        {"$eq": ["$recipient_id", user.id]},
+                                        {"$eq": ["$is_read", False]}
+                                    ]
+                                },
+                                1,
+                                0
+                            ]
+                        }
+                    }
+                }
+            },
+            {"$sort": {"last_message.created_at": -1}}
+        ]
+        
+        conversations = await db.chat_messages.aggregate(pipeline).to_list(100)
+        
+        # Get user details for each conversation
+        result = []
+        for conv in conversations:
+            other_user_id = conv["_id"]
+            other_user_data = await db.users.find_one({"id": other_user_id})
+            if other_user_data:
+                other_user_data = parse_from_mongo(other_user_data)
+                result.append({
+                    "user_id": other_user_id,
+                    "user_name": other_user_data.get("name", "Unknown"),
+                    "user_role": other_user_data.get("role", "client"),
+                    "last_message": parse_from_mongo(conv["last_message"]),
+                    "unread_count": conv["unread_count"]
+                })
+        
+        return result
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch conversations: {str(e)}")
+
+# Project Timeline Routes
+@api_router.post("/tasks/{task_id}/milestones", response_model=ProjectMilestone)
+async def add_milestone(task_id: str, milestone_data: MilestoneCreate, request: Request):
+    """Add project milestone (admin only)"""
+    user = await require_admin(request)
+    
+    try:
+        # Check if task exists
+        task = await db.tasks.find_one({"id": task_id})
+        if not task:
+            raise HTTPException(status_code=404, detail="Task not found")
+        
+        # Create milestone
+        milestone = ProjectMilestone(
+            task_id=task_id,
+            title=milestone_data.title,
+            description=milestone_data.description,
+            due_date=milestone_data.due_date,
+            created_by=user.id
+        )
+        
+        # Save to database
+        milestone_data_mongo = prepare_for_mongo(milestone.dict())
+        await db.project_milestones.insert_one(milestone_data_mongo)
+        
+        return milestone
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to add milestone: {str(e)}")
+
+@api_router.get("/tasks/{task_id}/milestones", response_model=List[ProjectMilestone])
+async def get_milestones(task_id: str, request: Request):
+    """Get project milestones"""
+    user = await require_auth(request)
+    
+    try:
+        # Check if task exists and user has access
+        task = await db.tasks.find_one({"id": task_id})
+        if not task:
+            raise HTTPException(status_code=404, detail="Task not found")
+        
+        # Check authorization
+        if user.role != UserRole.ADMIN and task.get("created_by") != user.id:
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        # Get milestones
+        milestones = await db.project_milestones.find({"task_id": task_id}).sort("created_at", 1).to_list(100)
+        parsed_milestones = [parse_from_mongo(milestone) for milestone in milestones]
+        
+        return [ProjectMilestone(**milestone) for milestone in parsed_milestones]
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch milestones: {str(e)}")
+
+@api_router.put("/milestones/{milestone_id}/status")
+async def update_milestone_status(milestone_id: str, status: str, request: Request):
+    """Update milestone status (admin only)"""
+    user = await require_admin(request)
+    
+    try:
+        update_data = {
+            "status": status,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        if status == "completed":
+            update_data["completed_date"] = datetime.now(timezone.utc).isoformat()
+        
+        result = await db.project_milestones.update_one(
+            {"id": milestone_id},
+            {"$set": update_data}
+        )
+        
+        if result.modified_count == 0:
+            raise HTTPException(status_code=404, detail="Milestone not found")
+        
+        return {"message": "Milestone status updated successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update milestone: {str(e)}")
 
 # Admin Routes
 @api_router.get("/admin/users", response_model=List[User])
