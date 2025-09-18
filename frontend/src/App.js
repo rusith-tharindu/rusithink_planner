@@ -671,7 +671,17 @@ const Dashboard = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="text-slate-400">Loading...</div>
+        <div className="text-center">
+          <div className="flex justify-center mb-4">
+            <img 
+              src="https://customer-assets.emergentagent.com/job_taskmaster-pro-11/artifacts/shvxprc6_Rusithink_logo.webp" 
+              alt="RusiThink Logo" 
+              className="h-12 w-auto"
+            />
+          </div>
+          <div className="loading-spinner mx-auto mb-4"></div>
+          <div className="text-slate-400">Loading...</div>
+        </div>
       </div>
     );
   }
