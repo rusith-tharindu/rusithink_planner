@@ -337,7 +337,12 @@ class ProjectPlannerAPITester:
         
         return all_passed
 
-    def test_create_task(self):
+    def test_api_root(self):
+        """Test API root endpoint"""
+        success, _, _ = self.run_test("API Root", "GET", "", 200)
+        return success
+
+    # ========== LEGACY CRUD TESTS (Updated) ==========
         """Test task creation"""
         # Create a task due tomorrow at 2 PM
         due_date = datetime.now() + timedelta(days=1)
