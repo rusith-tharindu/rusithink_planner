@@ -766,13 +766,30 @@ const Dashboard = () => {
   const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const isAdmin = user?.role === 'admin';
+
+  const fetchUnreadCount = async () => {
+    if (isAdmin) return; // Admin doesn't have notifications for now
+    
+    try {
+      const response = await axios.get(`${API}/notifications/unread-count`, { withCredentials: true });
+      setUnreadCount(response.data.unread_count || 0);
+    } catch (error) {
+      console.error('Error fetching unread count:', error);
+    }
+  };
 
   const fetchTasks = async () => {
     try {
       const response = await axios.get(`${API}/tasks`, { withCredentials: true });
       setTasks(response.data);
+      
+      // Update unread count after fetching tasks
+      if (!isAdmin) {
+        fetchUnreadCount();
+      }
     } catch (error) {
       console.error('Error fetching tasks:', error);
       toast.error('Failed to load tasks');
@@ -834,7 +851,13 @@ const Dashboard = () => {
     };
     
     loadData();
-  }, []);
+    
+    // Polling for unread notifications every 30 seconds for clients
+    if (!isAdmin) {
+      const interval = setInterval(fetchUnreadCount, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [isAdmin]);
 
   if (loading) {
     return (
@@ -877,6 +900,16 @@ const Dashboard = () => {
             </div>
             
             <div className="flex gap-3">
+              {/* Notification Bell for Clients */}
+              {!isAdmin && unreadCount > 0 && (
+                <div className="relative">
+                  <Bell className="w-6 h-6 text-orange-400" />
+                  <Badge className="absolute -top-2 -right-2 bg-orange-600 text-white text-xs min-w-[20px] h-5 rounded-full flex items-center justify-center">
+                    {unreadCount}
+                  </Badge>
+                </div>
+              )}
+              
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
                   <Button className="bg-blue-600 hover:bg-blue-700">
