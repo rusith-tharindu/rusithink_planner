@@ -10,6 +10,8 @@ class ProjectPlannerAPITester:
         self.tests_run = 0
         self.tests_passed = 0
         self.created_task_id = None
+        self.admin_session_token = None
+        self.admin_cookies = None
 
     def run_test(self, name, method, endpoint, expected_status, data=None, params=None):
         """Run a single API test"""
