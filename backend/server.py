@@ -473,9 +473,9 @@ async def process_oauth_session(request: Request, response: Response):
             key="session_token",
             value=session_token,
             max_age=7 * 24 * 60 * 60,
-            httponly=True,
-            secure=True,
-            samesite="none",
+            httponly=False,  # Allow JavaScript access for debugging
+            secure=False,  # Allow non-HTTPS for testing
+            samesite="lax",  # Changed from "none" for better compatibility
             path="/"
         )
         
