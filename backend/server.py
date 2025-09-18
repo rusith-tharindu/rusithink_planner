@@ -245,6 +245,69 @@ async def api_root():
     """API root endpoint"""
     return {"message": "Project Planning API is running", "status": "ok"}
 
+@api_router.post("/auth/register", response_model=SessionResponse)
+async def register_user(user_data: UserRegistration, response: Response):
+    """Manual user registration"""
+    
+    try:
+        # Check if user already exists
+        existing_user = await db.users.find_one({"email": user_data.email})
+        if existing_user:
+            raise HTTPException(status_code=400, detail="Email already registered")
+        
+        # Create new user
+        user = User(
+            email=user_data.email,
+            first_name=user_data.first_name,
+            last_name=user_data.last_name,
+            name=f"{user_data.first_name} {user_data.last_name}",
+            phone=user_data.phone,
+            company_name=user_data.company_name,
+            role=UserRole.CLIENT,
+            registration_type="manual",
+            password_hash=hash_password(user_data.password)
+        )
+        
+        # Save user to database
+        user_dict = prepare_for_mongo(user.dict())
+        await db.users.insert_one(user_dict)
+        
+        # Create session
+        session_token = str(uuid.uuid4()) + "-" + str(uuid.uuid4())
+        expires_at = datetime.now(timezone.utc) + timedelta(days=7)
+        
+        session = Session(
+            user_id=user.id,
+            session_token=session_token,
+            expires_at=expires_at
+        )
+        
+        session_data = prepare_for_mongo(session.dict())
+        await db.sessions.insert_one(session_data)
+        
+        # Set cookie
+        response.set_cookie(
+            key="session_token",
+            value=session_token,
+            max_age=7 * 24 * 60 * 60,
+            httponly=True,
+            secure=True,
+            samesite="none",
+            path="/"
+        )
+        
+        # Return user without password hash
+        user_response = user.dict()
+        user_response.pop('password_hash', None)
+        user_response_obj = User(**user_response)
+        
+        return SessionResponse(user=user_response_obj, session_token=session_token)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
+
 @api_router.post("/auth/admin-login", response_model=SessionResponse)
 async def admin_login(login_data: LoginRequest, response: Response):
     """Admin login with username/password"""
