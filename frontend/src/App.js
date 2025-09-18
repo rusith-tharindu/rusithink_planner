@@ -674,14 +674,21 @@ const Dashboard = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold text-slate-100 mb-2">
-                Project Planner
-                {isAdmin && <Badge className="ml-3 bg-red-900/20 text-red-400 border-red-700/30">ADMIN</Badge>}
-              </h1>
-              <p className="text-slate-400">
-                {isAdmin ? 'Manage all projects and client tasks' : 'Manage your projects and track deadlines'}
-              </p>
+            <div className="flex items-center gap-4">
+              <img 
+                src="https://customer-assets.emergentagent.com/job_taskmaster-pro-11/artifacts/shvxprc6_Rusithink_logo.webp" 
+                alt="RusiThink Logo" 
+                className="h-12 w-auto"
+              />
+              <div>
+                <h1 className="text-3xl font-bold text-slate-100 mb-2">
+                  RusiThink
+                  {isAdmin && <Badge className="ml-3 bg-red-900/20 text-red-400 border-red-700/30">ADMIN</Badge>}
+                </h1>
+                <p className="text-slate-400">
+                  {isAdmin ? 'Manage all projects and client tasks' : 'Manage your projects and track deadlines'}
+                </p>
+              </div>
             </div>
             
             <div className="flex gap-3">
