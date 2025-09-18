@@ -560,6 +560,107 @@ async def get_task_stats(request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch stats: {str(e)}")
 
+# Project Updates Routes
+@api_router.post("/tasks/{task_id}/updates", response_model=ProjectUpdate)
+async def add_project_update(task_id: str, update_data: ProjectUpdateCreate, request: Request):
+    """Add project update (admin only)"""
+    user = await require_admin(request)
+    
+    try:
+        # Check if task exists
+        task = await db.tasks.find_one({"id": task_id})
+        if not task:
+            raise HTTPException(status_code=404, detail="Task not found")
+        
+        # Create update
+        project_update = ProjectUpdate(
+            task_id=task_id,
+            content=update_data.content,
+            created_by=user.id,
+            created_by_name=user.name
+        )
+        
+        # Save update to database
+        update_data_mongo = prepare_for_mongo(project_update.dict())
+        await db.project_updates.insert_one(update_data_mongo)
+        
+        # Increment unread updates count for the task
+        await db.tasks.update_one(
+            {"id": task_id},
+            {"$inc": {"unread_updates": 1}, "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}}
+        )
+        
+        return project_update
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to add project update: {str(e)}")
+
+@api_router.get("/tasks/{task_id}/updates", response_model=List[ProjectUpdate])
+async def get_project_updates(task_id: str, request: Request):
+    """Get project updates for a task"""
+    user = await require_auth(request)
+    
+    try:
+        # Check if task exists and user has access
+        task = await db.tasks.find_one({"id": task_id})
+        if not task:
+            raise HTTPException(status_code=404, detail="Task not found")
+        
+        # Check authorization
+        if user.role != UserRole.ADMIN and task.get("created_by") != user.id:
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        # Get updates
+        updates = await db.project_updates.find({"task_id": task_id}).sort("created_at", -1).to_list(100)
+        parsed_updates = [parse_from_mongo(update) for update in updates]
+        
+        # If client is viewing, mark updates as read
+        if user.role == UserRole.CLIENT:
+            # Mark all updates as read
+            await db.project_updates.update_many(
+                {"task_id": task_id, "is_read": False},
+                {"$set": {"is_read": True}}
+            )
+            
+            # Reset unread count for task
+            await db.tasks.update_one(
+                {"id": task_id},
+                {"$set": {"unread_updates": 0}}
+            )
+        
+        return [ProjectUpdate(**update) for update in parsed_updates]
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch project updates: {str(e)}")
+
+@api_router.get("/notifications/unread-count")
+async def get_unread_notifications_count(request: Request):
+    """Get count of unread notifications for current user"""
+    user = await require_auth(request)
+    
+    try:
+        if user.role == UserRole.CLIENT:
+            # Client sees count of tasks with unread updates
+            pipeline = [
+                {"$match": {"created_by": user.id, "unread_updates": {"$gt": 0}}},
+                {"$group": {"_id": None, "total_unread": {"$sum": "$unread_updates"}}}
+            ]
+            
+            result = await db.tasks.aggregate(pipeline).to_list(1)
+            unread_count = result[0]["total_unread"] if result else 0
+            
+            return {"unread_count": unread_count}
+        else:
+            # Admin doesn't have notifications for now
+            return {"unread_count": 0}
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch notification count: {str(e)}")
+
 # Admin Routes
 @api_router.get("/admin/users", response_model=List[User])
 async def get_all_users(request: Request):
