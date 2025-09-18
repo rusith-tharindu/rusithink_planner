@@ -63,6 +63,15 @@ class Session(BaseModel):
     expires_at: datetime
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+class ProjectUpdate(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    task_id: str
+    content: str
+    created_by: str  # Admin user ID
+    created_by_name: str  # Admin name for display
+    is_read: bool = False  # Whether client has read this update
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
 class Task(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     title: str
@@ -74,6 +83,7 @@ class Task(BaseModel):
     created_by: Optional[str] = None  # User ID (optional for backward compatibility)
     client_email: Optional[str] = None  # For admin reference (optional for backward compatibility)
     client_name: Optional[str] = None   # For admin reference (optional for backward compatibility)
+    unread_updates: int = 0  # Count of unread updates for client
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
