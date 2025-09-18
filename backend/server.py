@@ -284,19 +284,43 @@ async def register_user(user_data: UserRegistration, response: Response):
     """Manual user registration"""
     
     try:
+        logger.info(f"Registration attempt for email: {user_data.email}")
+        
         # Check if user already exists
         existing_user = await db.users.find_one({"email": user_data.email})
         if existing_user:
+            logger.warning(f"Registration failed - email already exists: {user_data.email}")
             raise HTTPException(status_code=400, detail="Email already registered")
+        
+        # Validate required fields
+        if not user_data.first_name or not user_data.first_name.strip():
+            logger.warning(f"Registration failed - missing first name: {user_data.email}")
+            raise HTTPException(status_code=400, detail="First name is required")
+        
+        if not user_data.last_name or not user_data.last_name.strip():
+            logger.warning(f"Registration failed - missing last name: {user_data.email}")
+            raise HTTPException(status_code=400, detail="Last name is required")
+        
+        if not user_data.phone or not user_data.phone.strip():
+            logger.warning(f"Registration failed - missing phone: {user_data.email}")
+            raise HTTPException(status_code=400, detail="Phone number is required")
+        
+        if not user_data.company_name or not user_data.company_name.strip():
+            logger.warning(f"Registration failed - missing company name: {user_data.email}")
+            raise HTTPException(status_code=400, detail="Company name is required")
+        
+        if not user_data.password or len(user_data.password) < 6:
+            logger.warning(f"Registration failed - invalid password: {user_data.email}")
+            raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
         
         # Create new user
         user = User(
-            email=user_data.email,
-            first_name=user_data.first_name,
-            last_name=user_data.last_name,
-            name=f"{user_data.first_name} {user_data.last_name}",
-            phone=user_data.phone,
-            company_name=user_data.company_name,
+            email=user_data.email.strip(),
+            first_name=user_data.first_name.strip(),
+            last_name=user_data.last_name.strip(),
+            name=f"{user_data.first_name.strip()} {user_data.last_name.strip()}",
+            phone=user_data.phone.strip(),
+            company_name=user_data.company_name.strip(),
             role=UserRole.CLIENT,
             registration_type="manual",
             password_hash=hash_password(user_data.password)
@@ -305,6 +329,8 @@ async def register_user(user_data: UserRegistration, response: Response):
         # Save user to database
         user_dict = prepare_for_mongo(user.dict())
         await db.users.insert_one(user_dict)
+        
+        logger.info(f"User created successfully: {user_data.email}")
         
         # Create session
         session_token = str(uuid.uuid4()) + "-" + str(uuid.uuid4())
@@ -318,6 +344,8 @@ async def register_user(user_data: UserRegistration, response: Response):
         
         session_data = prepare_for_mongo(session.dict())
         await db.sessions.insert_one(session_data)
+        
+        logger.info(f"Session created for user: {user_data.email}")
         
         # Set cookie
         response.set_cookie(
@@ -335,11 +363,13 @@ async def register_user(user_data: UserRegistration, response: Response):
         user_response.pop('password_hash', None)
         user_response_obj = User(**user_response)
         
+        logger.info(f"Registration completed successfully: {user_data.email}")
         return SessionResponse(user=user_response_obj, session_token=session_token)
         
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Registration failed with exception for {user_data.email}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
 
 @api_router.post("/auth/admin-login", response_model=SessionResponse)
