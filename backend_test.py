@@ -13,10 +13,12 @@ class ProjectPlannerAPITester:
         self.admin_session_token = None
         self.admin_cookies = None
 
-    def run_test(self, name, method, endpoint, expected_status, data=None, params=None):
+    def run_test(self, name, method, endpoint, expected_status, data=None, params=None, cookies=None, headers=None):
         """Run a single API test"""
         url = f"{self.api_url}/{endpoint}" if not endpoint.startswith('http') else endpoint
-        headers = {'Content-Type': 'application/json'}
+        request_headers = {'Content-Type': 'application/json'}
+        if headers:
+            request_headers.update(headers)
 
         self.tests_run += 1
         print(f"\n🔍 Testing {name}...")
@@ -24,13 +26,13 @@ class ProjectPlannerAPITester:
         
         try:
             if method == 'GET':
-                response = requests.get(url, headers=headers, params=params)
+                response = requests.get(url, headers=request_headers, params=params, cookies=cookies)
             elif method == 'POST':
-                response = requests.post(url, json=data, headers=headers)
+                response = requests.post(url, json=data, headers=request_headers, cookies=cookies)
             elif method == 'PUT':
-                response = requests.put(url, json=data, headers=headers, params=params)
+                response = requests.put(url, json=data, headers=request_headers, params=params, cookies=cookies)
             elif method == 'DELETE':
-                response = requests.delete(url, headers=headers)
+                response = requests.delete(url, headers=request_headers, cookies=cookies)
 
             success = response.status_code == expected_status
             if success:
@@ -39,9 +41,9 @@ class ProjectPlannerAPITester:
                 try:
                     response_data = response.json()
                     print(f"   Response: {json.dumps(response_data, indent=2)[:200]}...")
-                    return True, response_data
+                    return True, response_data, response.cookies
                 except:
-                    return True, {}
+                    return True, {}, response.cookies
             else:
                 print(f"❌ Failed - Expected {expected_status}, got {response.status_code}")
                 try:
@@ -49,11 +51,11 @@ class ProjectPlannerAPITester:
                     print(f"   Error: {error_data}")
                 except:
                     print(f"   Error: {response.text}")
-                return False, {}
+                return False, {}, None
 
         except Exception as e:
             print(f"❌ Failed - Error: {str(e)}")
-            return False, {}
+            return False, {}, None
 
     def test_api_root(self):
         """Test API root endpoint"""
