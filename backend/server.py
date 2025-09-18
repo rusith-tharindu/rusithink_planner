@@ -229,8 +229,14 @@ async def init_database():
         admin_user = User(
             id="admin-" + str(uuid.uuid4()),
             email="admin@example.com",
+            first_name="Admin",
+            last_name="User", 
             name="Administrator",
-            role=UserRole.ADMIN
+            phone=None,
+            company_name="RusiThink",
+            role=UserRole.ADMIN,
+            registration_type="admin",
+            password_hash=None  # Admin doesn't use password in User model
         )
         
         admin_data = prepare_for_mongo(admin_user.dict())
