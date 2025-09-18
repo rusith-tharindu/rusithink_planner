@@ -57,9 +57,285 @@ class ProjectPlannerAPITester:
             print(f"❌ Failed - Error: {str(e)}")
             return False, {}, None
 
-    def test_api_root(self):
-        """Test API root endpoint"""
-        return self.run_test("API Root", "GET", "", 200)
+    # ========== AUTHENTICATION TESTS ==========
+    
+    def test_admin_login_success(self):
+        """Test admin login with correct credentials"""
+        login_data = {
+            "username": "rusithink",
+            "password": "20200104Rh"
+        }
+        
+        success, response, cookies = self.run_test(
+            "Admin Login (Valid Credentials)", 
+            "POST", 
+            "auth/admin-login", 
+            200, 
+            data=login_data
+        )
+        
+        if success:
+            # Store session for future tests
+            self.admin_cookies = cookies
+            if 'session_token' in response:
+                self.admin_session_token = response['session_token']
+            
+            # Verify response structure
+            if 'user' in response and response['user'].get('role') == 'admin':
+                print(f"   ✅ Admin user authenticated: {response['user']['name']}")
+                print(f"   ✅ User role: {response['user']['role']}")
+                return True
+            else:
+                print(f"   ❌ Invalid response structure or role")
+                return False
+        
+        return success
+
+    def test_admin_login_invalid_credentials(self):
+        """Test admin login with invalid credentials"""
+        login_data = {
+            "username": "rusithink",
+            "password": "wrongpassword"
+        }
+        
+        success, response, _ = self.run_test(
+            "Admin Login (Invalid Credentials)", 
+            "POST", 
+            "auth/admin-login", 
+            401, 
+            data=login_data
+        )
+        return success
+
+    def test_admin_login_invalid_username(self):
+        """Test admin login with invalid username"""
+        login_data = {
+            "username": "wronguser",
+            "password": "20200104Rh"
+        }
+        
+        success, response, _ = self.run_test(
+            "Admin Login (Invalid Username)", 
+            "POST", 
+            "auth/admin-login", 
+            401, 
+            data=login_data
+        )
+        return success
+
+    def test_get_current_user_authenticated(self):
+        """Test getting current user info when authenticated"""
+        if not self.admin_cookies:
+            print("❌ No admin session available for authenticated user test")
+            return False
+        
+        success, response, _ = self.run_test(
+            "Get Current User (Authenticated)", 
+            "GET", 
+            "auth/me", 
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        if success and response.get('role') == 'admin':
+            print(f"   ✅ Current user: {response.get('name')} ({response.get('role')})")
+            return True
+        
+        return success
+
+    def test_get_current_user_unauthenticated(self):
+        """Test getting current user info when not authenticated"""
+        success, response, _ = self.run_test(
+            "Get Current User (Unauthenticated)", 
+            "GET", 
+            "auth/me", 
+            401
+        )
+        return success
+
+    def test_oauth_session_missing_header(self):
+        """Test OAuth session processing without X-Session-ID header"""
+        success, response, _ = self.run_test(
+            "OAuth Session (Missing Header)", 
+            "POST", 
+            "auth/oauth/session-data", 
+            400
+        )
+        return success
+
+    def test_oauth_session_invalid_id(self):
+        """Test OAuth session processing with invalid session ID"""
+        headers = {"X-Session-ID": "invalid-session-id"}
+        success, response, _ = self.run_test(
+            "OAuth Session (Invalid ID)", 
+            "POST", 
+            "auth/oauth/session-data", 
+            401,
+            headers=headers
+        )
+        return success
+
+    def test_logout(self):
+        """Test logout functionality"""
+        if not self.admin_cookies:
+            print("❌ No admin session available for logout test")
+            return False
+        
+        success, response, _ = self.run_test(
+            "Admin Logout", 
+            "POST", 
+            "auth/logout", 
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        if success:
+            # Clear stored session
+            self.admin_cookies = None
+            self.admin_session_token = None
+            print("   ✅ Session cleared")
+        
+        return success
+
+    # ========== AUTHORIZATION TESTS ==========
+
+    def test_create_task_as_admin(self):
+        """Test task creation as admin"""
+        if not self.admin_cookies:
+            print("❌ No admin session available for task creation test")
+            return False
+        
+        # Create a task due tomorrow at 2 PM
+        due_date = datetime.now() + timedelta(days=1)
+        due_date = due_date.replace(hour=14, minute=0, second=0, microsecond=0)
+        
+        task_data = {
+            "title": "Admin Test Task - Website Redesign",
+            "description": "Complete redesign of company website with modern UI/UX",
+            "due_datetime": due_date.isoformat(),
+            "project_price": 5000.0,
+            "priority": "high"
+        }
+        
+        success, response, _ = self.run_test(
+            "Create Task (Admin)", 
+            "POST", 
+            "tasks", 
+            200, 
+            data=task_data,
+            cookies=self.admin_cookies
+        )
+        
+        if success and 'id' in response:
+            self.created_task_id = response['id']
+            print(f"   ✅ Created task ID: {self.created_task_id}")
+            print(f"   ✅ Task created by: {response.get('client_name')}")
+        
+        return success
+
+    def test_get_tasks_as_admin(self):
+        """Test getting all tasks as admin"""
+        if not self.admin_cookies:
+            print("❌ No admin session available for get tasks test")
+            return False
+        
+        success, response, _ = self.run_test(
+            "Get All Tasks (Admin)", 
+            "GET", 
+            "tasks", 
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        if success:
+            print(f"   ✅ Retrieved {len(response)} tasks")
+        
+        return success
+
+    def test_get_task_stats_as_admin(self):
+        """Test getting task statistics as admin"""
+        if not self.admin_cookies:
+            print("❌ No admin session available for stats test")
+            return False
+        
+        success, response, _ = self.run_test(
+            "Get Task Stats (Admin)", 
+            "GET", 
+            "tasks/stats/overview", 
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        if success:
+            print(f"   ✅ Stats - Total: {response.get('total_tasks')}, Pending: {response.get('pending_tasks')}")
+            print(f"   ✅ User role in stats: {response.get('user_role')}")
+        
+        return success
+
+    def test_delete_task_as_admin(self):
+        """Test deleting a task as admin (admin-only operation)"""
+        if not self.admin_cookies:
+            print("❌ No admin session available for delete test")
+            return False
+        
+        if not self.created_task_id:
+            print("❌ No task ID available for delete test")
+            return False
+        
+        success, response, _ = self.run_test(
+            "Delete Task (Admin Only)", 
+            "DELETE", 
+            f"tasks/{self.created_task_id}", 
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        if success:
+            print("   ✅ Task deleted successfully (admin privilege)")
+        
+        return success
+
+    def test_admin_get_all_users(self):
+        """Test admin endpoint to get all users"""
+        if not self.admin_cookies:
+            print("❌ No admin session available for get users test")
+            return False
+        
+        success, response, _ = self.run_test(
+            "Get All Users (Admin Only)", 
+            "GET", 
+            "admin/users", 
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        if success:
+            print(f"   ✅ Retrieved {len(response)} users")
+            for user in response[:3]:  # Show first 3 users
+                print(f"   - {user.get('name')} ({user.get('email')}) - {user.get('role')}")
+        
+        return success
+
+    def test_protected_routes_without_auth(self):
+        """Test that protected routes require authentication"""
+        endpoints_to_test = [
+            ("tasks", "GET"),
+            ("tasks/stats/overview", "GET"),
+            ("admin/users", "GET")
+        ]
+        
+        all_passed = True
+        for endpoint, method in endpoints_to_test:
+            success, _, _ = self.run_test(
+                f"Protected Route {endpoint} (No Auth)", 
+                method, 
+                endpoint, 
+                401
+            )
+            if not success:
+                all_passed = False
+        
+        return all_passed
 
     def test_create_task(self):
         """Test task creation"""
