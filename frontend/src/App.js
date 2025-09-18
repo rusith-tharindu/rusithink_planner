@@ -1264,7 +1264,355 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-slate-950">
       <div className="container mx-auto px-4 py-8">
+// Main Dashboard Component
+const Dashboard = () => {
+  const { user, logout } = useAuth();
+  const [tasks, setTasks] = useState([]);
+  const [stats, setStats] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [users, setUsers] = useState([]);
+  const [activeTab, setActiveTab] = useState('tasks');
+
+  const isAdmin = user?.role === 'admin';
+
+  const fetchUsers = async () => {
+    if (!isAdmin) return;
+    
+    try {
+      const response = await axios.get(`${API}/admin/users`, { withCredentials: true });
+      setUsers(response.data);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      toast.error('Failed to load users');
+    }
+  };
+
+  const fetchUnreadCount = async () => {
+    if (isAdmin) return; // Admin doesn't have notifications for now
+    
+    try {
+      const response = await axios.get(`${API}/notifications/unread-count`, { withCredentials: true });
+      setUnreadCount(response.data.unread_count || 0);
+    } catch (error) {
+      console.error('Error fetching unread count:', error);
+    }
+  };
+
+  const fetchTasks = async () => {
+    try {
+      const response = await axios.get(`${API}/tasks`, { withCredentials: true });
+      setTasks(response.data);
+      
+      // Update unread count after fetching tasks
+      if (!isAdmin) {
+        fetchUnreadCount();
+      }
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+      toast.error('Failed to load tasks');
+    }
+  };
+
+  const fetchStats = async () => {
+    try {
+      const response = await axios.get(`${API}/tasks/stats/overview`, { withCredentials: true });
+      setStats(response.data);
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
+
+  const createTask = async (taskData) => {
+    try {
+      await axios.post(`${API}/tasks`, taskData, { withCredentials: true });
+      toast.success('Task created successfully!');
+      fetchTasks();
+      fetchStats();
+    } catch (error) {
+      console.error('Error creating task:', error);
+      toast.error('Failed to create task');
+    }
+  };
+
+  const updateTaskStatus = async (taskId, status) => {
+    try {
+      await axios.put(`${API}/tasks/${taskId}/status?status=${status}`, {}, { withCredentials: true });
+      toast.success('Task status updated!');
+      fetchTasks();
+      fetchStats();
+    } catch (error) {
+      console.error('Error updating task status:', error);
+      toast.error('Failed to update task status');
+    }
+  };
+
+  const deleteTask = async (taskId) => {
+    if (!isAdmin) return;
+    
+    try {
+      await axios.delete(`${API}/tasks/${taskId}`, { withCredentials: true });
+      toast.success('Task deleted successfully!');
+      fetchTasks();
+      fetchStats();
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      toast.error('Failed to delete task');
+    }
+  };
+
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      const promises = [fetchTasks(), fetchStats()];
+      if (isAdmin) {
+        promises.push(fetchUsers());
+      }
+      await Promise.all(promises);
+      setLoading(false);
+    };
+    
+    loadData();
+    
+    // Polling for unread notifications every 30 seconds for clients
+    if (!isAdmin) {
+      const interval = setInterval(fetchUnreadCount, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [isAdmin]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="text-center">
+          <div className="flex justify-center mb-4">
+            <img 
+              src="https://customer-assets.emergentagent.com/job_taskmaster-pro-11/artifacts/shvxprc6_Rusithink_logo.webp" 
+              alt="RusiThink Logo" 
+              className="h-12 w-auto"
+            />
+          </div>
+          <div className="loading-spinner mx-auto mb-4"></div>
+          <div className="text-slate-400">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-950">
+      <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <img 
+                src="https://customer-assets.emergentagent.com/job_taskmaster-pro-11/artifacts/shvxprc6_Rusithink_logo.webp" 
+                alt="RusiThink Logo" 
+                className="h-12 w-auto"
+              />
+              <div>
+                <h1 className="text-3xl font-bold text-slate-100 mb-2">
+                  RusiThink
+                  {isAdmin && <Badge className="ml-3 bg-red-900/20 text-red-400 border-red-700/30">ADMIN</Badge>}
+                </h1>
+                <p className="text-slate-400">
+                  {isAdmin ? 'Manage all projects and client tasks' : 'Manage your projects and track deadlines'}
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex gap-3">
+              {/* Notification Bell for Clients */}
+              {!isAdmin && unreadCount > 0 && (
+                <div className="relative">
+                  <Bell className="w-6 h-6 text-orange-400" />
+                  <Badge className="absolute -top-2 -right-2 bg-orange-600 text-white text-xs min-w-[20px] h-5 rounded-full flex items-center justify-center">
+                    {unreadCount}
+                  </Badge>
+                </div>
+              )}
+              
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-blue-600 hover:bg-blue-700">
+                    <Plus className="w-4 h-4 mr-2" />
+                    New Task
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="bg-slate-900 border-slate-700 text-slate-100 max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Create New Task</DialogTitle>
+                    <DialogDescription className="text-slate-400">
+                      Add a new task to your project timeline
+                    </DialogDescription>
+                  </DialogHeader>
+                  <TaskForm onSubmit={createTask} onClose={() => setIsDialogOpen(false)} />
+                </DialogContent>
+              </Dialog>
+              
+              <Button onClick={logout} variant="outline" className="border-slate-600 text-slate-200">
+                <LogOut className="w-4 h-4 mr-2" />
+                Logout
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* User Info */}
+        <div className="bg-slate-900/30 rounded-lg p-4 mb-8">
+          <div className="flex items-center gap-3">
+            {user?.picture ? (
+              <img src={user.picture} alt={user.name} className="w-10 h-10 rounded-full" />
+            ) : (
+              <div className="w-10 h-10 bg-slate-700 rounded-full flex items-center justify-center">
+                <User className="w-5 h-5 text-slate-400" />
+              </div>
+            )}
+            <div>
+              <p className="text-slate-100 font-medium">{user?.name}</p>
+              <p className="text-slate-400 text-sm">{user?.email}</p>
+              {user?.company_name && (
+                <p className="text-slate-500 text-xs">{user.company_name}</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Admin Tabs */}
+        {isAdmin && (
+          <div className="mb-8">
+            <div className="flex border-b border-slate-700">
+              <button
+                onClick={() => setActiveTab('tasks')}
+                className={`px-6 py-3 text-sm font-medium transition-colors ${
+                  activeTab === 'tasks'
+                    ? 'text-blue-400 border-b-2 border-blue-400'
+                    : 'text-slate-400 hover:text-slate-300'
+                }`}
+              >
+                <Clock className="w-4 h-4 inline mr-2" />
+                Tasks & Projects
+              </button>
+              <button
+                onClick={() => setActiveTab('users')}
+                className={`px-6 py-3 text-sm font-medium transition-colors ${
+                  activeTab === 'users'
+                    ? 'text-blue-400 border-b-2 border-blue-400'
+                    : 'text-slate-400 hover:text-slate-300'
+                }`}
+              >
+                <Users className="w-4 h-4 inline mr-2" />
+                User Management
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Content based on active tab */}
+        {(!isAdmin || activeTab === 'tasks') && (
+          <>
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <Card className="bg-slate-900/50 border-slate-700/30">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-blue-900/20 rounded-lg">
+                      <Clock className="w-6 h-6 text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-slate-100">{stats.total_tasks || 0}</p>
+                      <p className="text-slate-400 text-sm">Total Tasks</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-slate-900/50 border-slate-700/30">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-yellow-900/20 rounded-lg">
+                      <AlertCircle className="w-6 h-6 text-yellow-400" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-slate-100">{stats.pending_tasks || 0}</p>
+                      <p className="text-slate-400 text-sm">Pending</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-slate-900/50 border-slate-700/30">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-green-900/20 rounded-lg">
+                      <CheckCircle className="w-6 h-6 text-green-400" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-slate-100">{stats.completed_tasks || 0}</p>
+                      <p className="text-slate-400 text-sm">Completed</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-slate-900/50 border-slate-700/30">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-emerald-900/20 rounded-lg">
+                      <DollarSign className="w-6 h-6 text-emerald-400" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-slate-100">
+                        ${(stats.total_project_value || 0).toLocaleString()}
+                      </p>
+                      <p className="text-slate-400 text-sm">Total Value</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Tasks Grid */}
+            <div className="space-y-6">
+              <h2 className="text-xl font-semibold text-slate-100">
+                {isAdmin ? 'All Tasks' : 'Your Tasks'}
+              </h2>
+              
+              {tasks.length === 0 ? (
+                <Card className="bg-slate-900/50 border-slate-700/30">
+                  <CardContent className="p-12 text-center">
+                    <Clock className="w-12 h-12 text-slate-600 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-slate-300 mb-2">No tasks yet</h3>
+                    <p className="text-slate-500 mb-4">Create your first task to get started</p>
+                    <Button onClick={() => setIsDialogOpen(true)} className="bg-blue-600 hover:bg-blue-700">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create Task
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {tasks.map(task => (
+                    <TaskCard
+                      key={task.id}
+                      task={task}
+                      onStatusUpdate={updateTaskStatus}
+                      onDelete={deleteTask}
+                      isAdmin={isAdmin}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* Users Management Tab */}
+        {isAdmin && activeTab === 'users' && (
+          <UsersManagement users={users} onRefresh={fetchUsers} />
+        )}
+      </div>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-4">
               <img 
