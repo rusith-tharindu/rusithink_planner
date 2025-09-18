@@ -112,6 +112,21 @@ class TaskUpdate(BaseModel):
 class ProjectUpdateCreate(BaseModel):
     content: str
 
+class UserRegistration(BaseModel):
+    email: str
+    password: str
+    first_name: str
+    last_name: str
+    phone: str
+    company_name: str
+
+class UserUpdate(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    phone: Optional[str] = None
+    company_name: Optional[str] = None
+    email: Optional[str] = None
+
 class LoginRequest(BaseModel):
     username: str
     password: str
