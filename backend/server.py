@@ -86,6 +86,29 @@ class ProjectUpdate(BaseModel):
     is_read: bool = False  # Whether client has read this update
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+class ChatMessage(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    task_id: Optional[str] = None  # Optional - can be general chat or task-specific
+    sender_id: str  # User ID of sender
+    sender_name: str  # Name of sender for display
+    sender_role: str  # "admin" or "client"
+    recipient_id: str  # User ID of recipient
+    content: str
+    is_read: bool = False
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class ProjectMilestone(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    task_id: str
+    title: str
+    description: Optional[str] = None
+    status: str = "pending"  # "pending", "in_progress", "completed"
+    due_date: Optional[datetime] = None
+    completed_date: Optional[datetime] = None
+    created_by: str  # Admin user ID
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
 class Task(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     title: str
