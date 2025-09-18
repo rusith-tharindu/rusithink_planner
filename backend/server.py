@@ -775,9 +775,186 @@ async def get_all_users(request: Request):
     try:
         users = await db.users.find().to_list(1000)
         parsed_users = [parse_from_mongo(user) for user in users]
-        return [User(**user) for user in parsed_users]
+        
+        # Remove password hashes from response
+        clean_users = []
+        for user_data in parsed_users:
+            user_dict = user_data.copy()
+            user_dict.pop('password_hash', None)
+            clean_users.append(User(**user_dict))
+        
+        return clean_users
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch users: {str(e)}")
+
+@api_router.put("/admin/users/{user_id}", response_model=User)
+async def update_user(user_id: str, user_update: UserUpdate, request: Request):
+    """Update user information (admin only)"""
+    await require_admin(request)
+    
+    try:
+        # Check if user exists
+        existing_user = await db.users.find_one({"id": user_id})
+        if not existing_user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Check for email uniqueness if email is being updated
+        if user_update.email:
+            email_exists = await db.users.find_one({"email": user_update.email, "id": {"$ne": user_id}})
+            if email_exists:
+                raise HTTPException(status_code=400, detail="Email already exists")
+        
+        # Update fields
+        update_data = user_update.dict(exclude_unset=True)
+        update_data['updated_at'] = datetime.now(timezone.utc)
+        
+        # Update name if first_name or last_name changed
+        if 'first_name' in update_data or 'last_name' in update_data:
+            existing_user = parse_from_mongo(existing_user)
+            first_name = update_data.get('first_name', existing_user.get('first_name', ''))
+            last_name = update_data.get('last_name', existing_user.get('last_name', ''))
+            if first_name and last_name:
+                update_data['name'] = f"{first_name} {last_name}"
+        
+        # Prepare for MongoDB
+        update_data = prepare_for_mongo(update_data)
+        
+        await db.users.update_one({"id": user_id}, {"$set": update_data})
+        
+        # Return updated user
+        updated_user = await db.users.find_one({"id": user_id})
+        parsed_user = parse_from_mongo(updated_user)
+        parsed_user.pop('password_hash', None)
+        return User(**parsed_user)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update user: {str(e)}")
+
+@api_router.get("/admin/users/export/csv")
+async def export_users_csv(request: Request):
+    """Export users to CSV (admin only)"""
+    await require_admin(request)
+    
+    try:
+        users = await db.users.find().to_list(1000)
+        parsed_users = [parse_from_mongo(user) for user in users]
+        
+        # Prepare data for CSV
+        csv_data = []
+        for user in parsed_users:
+            csv_data.append({
+                'Email': user.get('email', ''),
+                'First Name': user.get('first_name', ''),
+                'Last Name': user.get('last_name', ''),
+                'Phone': user.get('phone', ''),
+                'Company Name': user.get('company_name', ''),
+                'Registration Type': user.get('registration_type', 'oauth'),
+                'Role': user.get('role', 'client'),
+                'Created At': user.get('created_at', '').split('T')[0] if user.get('created_at') else ''
+            })
+        
+        # Create DataFrame and CSV
+        df = pd.DataFrame(csv_data)
+        csv_buffer = io.StringIO()
+        df.to_csv(csv_buffer, index=False)
+        csv_buffer.seek(0)
+        
+        # Return CSV as streaming response
+        return StreamingResponse(
+            io.BytesIO(csv_buffer.getvalue().encode('utf-8')),
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=users_export.csv"}
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to export CSV: {str(e)}")
+
+@api_router.get("/admin/users/export/pdf")
+async def export_users_pdf(request: Request):
+    """Export users to PDF (admin only)"""
+    await require_admin(request)
+    
+    try:
+        users = await db.users.find().to_list(1000)
+        parsed_users = [parse_from_mongo(user) for user in users]
+        
+        # Create PDF buffer
+        pdf_buffer = io.BytesIO()
+        doc = SimpleDocTemplate(pdf_buffer, pagesize=A4)
+        
+        # Get styles
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=16,
+            spaceAfter=30,
+            alignment=1  # Center alignment
+        )
+        
+        # PDF content
+        content = []
+        
+        # Title
+        title = Paragraph("RusiThink - User Registration Report", title_style)
+        content.append(title)
+        content.append(Spacer(1, 20))
+        
+        # Prepare table data
+        table_data = [['Email', 'Name', 'Phone', 'Company', 'Registration', 'Date']]
+        
+        for user in parsed_users:
+            name = f"{user.get('first_name', '')} {user.get('last_name', '')}".strip()
+            if not name:
+                name = user.get('name', '')
+            
+            created_date = ''
+            if user.get('created_at'):
+                try:
+                    created_date = user.get('created_at').split('T')[0]
+                except:
+                    created_date = str(user.get('created_at', ''))[:10]
+            
+            table_data.append([
+                user.get('email', ''),
+                name,
+                user.get('phone', ''),
+                user.get('company_name', ''),
+                user.get('registration_type', 'oauth').title(),
+                created_date
+            ])
+        
+        # Create table
+        table = Table(table_data, colWidths=[2*inch, 1.5*inch, 1*inch, 1.5*inch, 0.8*inch, 0.8*inch])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        
+        content.append(table)
+        
+        # Build PDF
+        doc.build(content)
+        pdf_buffer.seek(0)
+        
+        return StreamingResponse(
+            pdf_buffer,
+            media_type="application/pdf",
+            headers={"Content-Disposition": "attachment; filename=users_export.pdf"}
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to export PDF: {str(e)}")
 
 @api_router.post("/admin/tasks", response_model=Task)
 async def admin_create_task_for_client(task_data: TaskCreate, client_email: str, request: Request):
