@@ -536,11 +536,489 @@ const CountdownTimer = ({ dueDateTime, status }) => {
   );
 };
 
-// Simple Dashboard for now (will be expanded later)
+// Project Updates Dialog Component
+const ProjectUpdatesDialog = ({ task, isAdmin, open, onClose }) => {
+  const [updates, setUpdates] = useState([]);
+  const [newUpdate, setNewUpdate] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const fetchUpdates = async () => {
+    if (!open || !task) return;
+    
+    setLoading(true);
+    try {
+      const response = await axios.get(`${API}/tasks/${task.id}/updates`, { withCredentials: true });
+      setUpdates(response.data);
+    } catch (error) {
+      console.error('Error fetching updates:', error);
+      toast.error('Failed to load project updates');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addUpdate = async () => {
+    if (!newUpdate.trim()) return;
+    
+    setSubmitting(true);
+    try {
+      await axios.post(`${API}/tasks/${task.id}/updates`, 
+        { content: newUpdate }, 
+        { withCredentials: true }
+      );
+      
+      setNewUpdate('');
+      toast.success('Project update added successfully!');
+      fetchUpdates(); // Refresh updates
+    } catch (error) {
+      console.error('Error adding update:', error);
+      toast.error('Failed to add project update');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUpdates();
+  }, [open, task]);
+
+  if (!task) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="bg-slate-900 border-slate-700 text-slate-100 max-w-3xl max-h-[80vh] overflow-y-auto">
+        <DialogHeader className="sticky top-0 bg-slate-900 pb-4 border-b border-slate-700">
+          <DialogTitle className="flex items-center gap-3">
+            <MessageSquare className="w-5 h-5 text-blue-400" />
+            Project Updates - {task.title}
+          </DialogTitle>
+          <DialogDescription className="text-slate-400">
+            {isAdmin ? 'Add progress updates for this project' : 'View project progress updates'}
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-6">
+          {/* Add Update Form (Admin Only) */}
+          {isAdmin && (
+            <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
+              <Label className="text-slate-200 mb-2 block">Add Progress Update</Label>
+              <div className="space-y-3">
+                <Textarea
+                  value={newUpdate}
+                  onChange={(e) => setNewUpdate(e.target.value)}
+                  placeholder="Enter project progress update..."
+                  className="bg-slate-800 border-slate-600 text-slate-100 focus:border-blue-500 min-h-[100px]"
+                  rows={4}
+                />
+                <Button 
+                  onClick={addUpdate}
+                  disabled={submitting || !newUpdate.trim()}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  <Send className="w-4 h-4 mr-2" />
+                  {submitting ? 'Adding Update...' : 'Add Update'}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Updates List */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
+              <Clock className="w-5 h-5 text-slate-400" />
+              Progress Updates ({updates.length})
+            </h3>
+            
+            {loading ? (
+              <div className="text-center py-8">
+                <div className="loading-spinner mx-auto mb-4"></div>
+                <p className="text-slate-400">Loading updates...</p>
+              </div>
+            ) : updates.length === 0 ? (
+              <div className="text-center py-8">
+                <MessageSquare className="w-12 h-12 text-slate-600 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-slate-300 mb-2">No updates yet</h3>
+                <p className="text-slate-500">
+                  {isAdmin ? 'Add the first progress update for this project' : 'No progress updates have been added yet'}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {updates.map((update) => (
+                  <Card key={update.id} className="bg-slate-800/30 border-slate-700/30">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <Badge className="bg-red-900/20 text-red-400 border-red-700/30">
+                            ADMIN UPDATE
+                          </Badge>
+                          <span className="text-sm text-slate-400">
+                            by {update.created_by_name}
+                          </span>
+                        </div>
+                        <span className="text-sm text-slate-400">
+                          {format(new Date(update.created_at), 'PPp')}
+                        </span>
+                      </div>
+                      <p className="text-slate-200 leading-relaxed whitespace-pre-wrap">
+                        {update.content}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Task Card Component
+const TaskCard = ({ task, onStatusUpdate, onDelete, isAdmin }) => {
+  const [updatesDialogOpen, setUpdatesDialogOpen] = useState(false);
+  
+  const priorityColors = {
+    low: 'bg-green-900/20 text-green-400 border-green-700/30',
+    medium: 'bg-yellow-900/20 text-yellow-400 border-yellow-700/30',
+    high: 'bg-red-900/20 text-red-400 border-red-700/30'
+  };
+
+  const statusColors = {
+    pending: 'bg-blue-900/20 text-blue-400 border-blue-700/30',
+    completed: 'bg-green-900/20 text-green-400 border-green-700/30',
+    overdue: 'bg-red-900/20 text-red-400 border-red-700/30'
+  };
+
+  const handleStatusToggle = async () => {
+    const newStatus = task.status === 'completed' ? 'pending' : 'completed';
+    await onStatusUpdate(task.id, newStatus);
+  };
+
+  return (
+    <>
+      <Card className="bg-slate-900/50 border-slate-700/30 hover:bg-slate-900/70 transition-all duration-200">
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between">
+            <div className="space-y-2">
+              <CardTitle className="text-slate-100 text-lg flex items-center gap-2">
+                {task.title}
+                {task.unread_updates > 0 && (
+                  <Badge className="bg-orange-900/20 text-orange-400 border-orange-700/30 text-xs">
+                    {task.unread_updates} New Update{task.unread_updates > 1 ? 's' : ''}
+                  </Badge>
+                )}
+              </CardTitle>
+              <div className="flex gap-2 flex-wrap">
+                <Badge className={`text-xs ${priorityColors[task.priority]}`}>
+                  {task.priority.toUpperCase()}
+                </Badge>
+                <Badge className={`text-xs ${statusColors[task.status]}`}>
+                  {task.status.toUpperCase()}
+                </Badge>
+                {isAdmin && task.client_name && (
+                  <Badge className="text-xs bg-purple-900/20 text-purple-400 border-purple-700/30">
+                    {task.client_name}
+                  </Badge>
+                )}
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setUpdatesDialogOpen(true)}
+                className="text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
+                title={isAdmin ? "Add project update" : "View project updates"}
+              >
+                <MessageSquare className="w-4 h-4" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleStatusToggle}
+                className="text-green-400 hover:text-green-300 hover:bg-green-900/20"
+              >
+                <CheckCircle className="w-4 h-4" />
+              </Button>
+              {isAdmin && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => onDelete(task.id)}
+                  className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardHeader>
+        
+        <CardContent className="space-y-4">
+          {task.description && (
+            <p className="text-slate-300 text-sm leading-relaxed">{task.description}</p>
+          )}
+          
+          <div className="flex items-center gap-4 text-sm text-slate-400 flex-wrap">
+            <div className="flex items-center gap-2">
+              <CalendarDays className="w-4 h-4" />
+              <span>{format(new Date(task.due_datetime), 'PPp')}</span>
+            </div>
+            {task.project_price && (
+              <div className="flex items-center gap-2">
+                <DollarSign className="w-4 h-4" />
+                <span>${task.project_price.toLocaleString()}</span>
+              </div>
+            )}
+          </div>
+          
+          <CountdownTimer dueDateTime={task.due_datetime} status={task.status} />
+        </CardContent>
+      </Card>
+      
+      <ProjectUpdatesDialog 
+        task={task}
+        isAdmin={isAdmin}
+        open={updatesDialogOpen}
+        onClose={() => setUpdatesDialogOpen(false)}
+      />
+    </>
+  );
+};
+
+// Task Form Component
+const TaskForm = ({ onSubmit, onClose }) => {
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    due_date: '',
+    due_time: '12:00',
+    project_price: '',
+    priority: 'medium'
+  });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!formData.title || !formData.due_date) {
+      toast.error('Please fill in required fields');
+      return;
+    }
+
+    // Combine date and time
+    const dueDateTime = new Date(`${formData.due_date}T${formData.due_time}:00`);
+
+    const taskData = {
+      title: formData.title,
+      description: formData.description,
+      due_datetime: dueDateTime.toISOString(),
+      project_price: formData.project_price ? parseFloat(formData.project_price) : null,
+      priority: formData.priority
+    };
+
+    await onSubmit(taskData);
+    onClose();
+  };
+
+  // Get today's date in YYYY-MM-DD format for min date
+  const today = new Date().toISOString().split('T')[0];
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="space-y-2">
+        <Label htmlFor="title" className="text-slate-200">Task Title *</Label>
+        <Input
+          id="title"
+          value={formData.title}
+          onChange={(e) => setFormData({...formData, title: e.target.value})}
+          className="bg-slate-800 border-slate-600 text-slate-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+          placeholder="Enter task title"
+          required
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="description" className="text-slate-200">Description</Label>
+        <Textarea
+          id="description"
+          value={formData.description}
+          onChange={(e) => setFormData({...formData, description: e.target.value})}
+          className="bg-slate-800 border-slate-600 text-slate-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+          placeholder="Enter task description"
+          rows={3}
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="due_date" className="text-slate-200">Due Date *</Label>
+          <Input
+            id="due_date"
+            type="date"
+            value={formData.due_date}
+            min={today}
+            onChange={(e) => setFormData({...formData, due_date: e.target.value})}
+            className="bg-slate-800 border-slate-600 text-slate-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            required
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="due_time" className="text-slate-200">Due Time</Label>
+          <Input
+            id="due_time"
+            type="time"
+            value={formData.due_time}
+            onChange={(e) => setFormData({...formData, due_time: e.target.value})}
+            className="bg-slate-800 border-slate-600 text-slate-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="priority" className="text-slate-200">Priority</Label>
+          <Select value={formData.priority} onValueChange={(value) => setFormData({...formData, priority: value})}>
+            <SelectTrigger className="bg-slate-800 border-slate-600 text-slate-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-slate-800 border-slate-600 text-slate-100">
+              <SelectItem value="low" className="text-slate-100 hover:bg-slate-700">Low</SelectItem>
+              <SelectItem value="medium" className="text-slate-100 hover:bg-slate-700">Medium</SelectItem>
+              <SelectItem value="high" className="text-slate-100 hover:bg-slate-700">High</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="project_price" className="text-slate-200">Project Price ($)</Label>
+          <Input
+            id="project_price"
+            type="number"
+            min="0"
+            step="0.01"
+            value={formData.project_price}
+            onChange={(e) => setFormData({...formData, project_price: e.target.value})}
+            className="bg-slate-800 border-slate-600 text-slate-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            placeholder="0.00"
+          />
+        </div>
+      </div>
+
+      <div className="flex gap-4 pt-4">
+        <Button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white">
+          Create Task
+        </Button>
+        <Button type="button" variant="outline" onClick={onClose} className="border-slate-600 text-slate-200 hover:bg-slate-700">
+          Cancel
+        </Button>
+      </div>
+    </form>
+  );
+};
+
+// Main Dashboard Component
 const Dashboard = () => {
   const { user, logout } = useAuth();
-  const [loading, setLoading] = useState(false);
+  const [tasks, setTasks] = useState([]);
+  const [stats, setStats] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
   const isAdmin = user?.role === 'admin';
+
+  const fetchUnreadCount = async () => {
+    if (isAdmin) return; // Admin doesn't have notifications for now
+    
+    try {
+      const response = await axios.get(`${API}/notifications/unread-count`, { withCredentials: true });
+      setUnreadCount(response.data.unread_count || 0);
+    } catch (error) {
+      console.error('Error fetching unread count:', error);
+    }
+  };
+
+  const fetchTasks = async () => {
+    try {
+      const response = await axios.get(`${API}/tasks`, { withCredentials: true });
+      setTasks(response.data);
+      
+      // Update unread count after fetching tasks
+      if (!isAdmin) {
+        fetchUnreadCount();
+      }
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+      toast.error('Failed to load tasks');
+    }
+  };
+
+  const fetchStats = async () => {
+    try {
+      const response = await axios.get(`${API}/tasks/stats/overview`, { withCredentials: true });
+      setStats(response.data);
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
+
+  const createTask = async (taskData) => {
+    try {
+      await axios.post(`${API}/tasks`, taskData, { withCredentials: true });
+      toast.success('Task created successfully!');
+      fetchTasks();
+      fetchStats();
+    } catch (error) {
+      console.error('Error creating task:', error);
+      toast.error('Failed to create task');
+    }
+  };
+
+  const updateTaskStatus = async (taskId, status) => {
+    try {
+      await axios.put(`${API}/tasks/${taskId}/status?status=${status}`, {}, { withCredentials: true });
+      toast.success('Task status updated!');
+      fetchTasks();
+      fetchStats();
+    } catch (error) {
+      console.error('Error updating task status:', error);
+      toast.error('Failed to update task status');
+    }
+  };
+
+  const deleteTask = async (taskId) => {
+    if (!isAdmin) return;
+    
+    try {
+      await axios.delete(`${API}/tasks/${taskId}`, { withCredentials: true });
+      toast.success('Task deleted successfully!');
+      fetchTasks();
+      fetchStats();
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      toast.error('Failed to delete task');
+    }
+  };
+
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      await Promise.all([fetchTasks(), fetchStats()]);
+      setLoading(false);
+    };
+    
+    loadData();
+    
+    // Polling for unread notifications every 30 seconds for clients
+    if (!isAdmin) {
+      const interval = setInterval(fetchUnreadCount, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [isAdmin]);
 
   if (loading) {
     return (
@@ -583,6 +1061,34 @@ const Dashboard = () => {
             </div>
             
             <div className="flex gap-3">
+              {/* Notification Bell for Clients */}
+              {!isAdmin && unreadCount > 0 && (
+                <div className="relative">
+                  <Bell className="w-6 h-6 text-orange-400" />
+                  <Badge className="absolute -top-2 -right-2 bg-orange-600 text-white text-xs min-w-[20px] h-5 rounded-full flex items-center justify-center">
+                    {unreadCount}
+                  </Badge>
+                </div>
+              )}
+              
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-blue-600 hover:bg-blue-700">
+                    <Plus className="w-4 h-4 mr-2" />
+                    New Task
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="bg-slate-900 border-slate-700 text-slate-100 max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Create New Task</DialogTitle>
+                    <DialogDescription className="text-slate-400">
+                      Add a new task to your project timeline
+                    </DialogDescription>
+                  </DialogHeader>
+                  <TaskForm onSubmit={createTask} onClose={() => setIsDialogOpen(false)} />
+                </DialogContent>
+              </Dialog>
+              
               <Button onClick={logout} variant="outline" className="border-slate-600 text-slate-200">
                 <LogOut className="w-4 h-4 mr-2" />
                 Logout
@@ -611,24 +1117,99 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Welcome Message */}
-        <Card className="bg-slate-900/50 border-slate-700/30">
-          <CardContent className="p-12 text-center">
-            <h3 className="text-xl font-semibold text-slate-100 mb-4">
-              Welcome to RusiThink!
-            </h3>
-            <p className="text-slate-400 mb-6">
-              {isAdmin 
-                ? 'User registration system has been successfully implemented. You can now manage all users and their project details.'
-                : 'Your account has been created successfully. Full project management features are being finalized.'}
-            </p>
-            {isAdmin && (
-              <Badge className="bg-green-900/20 text-green-400 border-green-700/30">
-                ✅ Registration System Active
-              </Badge>
-            )}
-          </CardContent>
-        </Card>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <Card className="bg-slate-900/50 border-slate-700/30">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-blue-900/20 rounded-lg">
+                  <Clock className="w-6 h-6 text-blue-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-slate-100">{stats.total_tasks || 0}</p>
+                  <p className="text-slate-400 text-sm">Total Tasks</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-slate-900/50 border-slate-700/30">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-yellow-900/20 rounded-lg">
+                  <AlertCircle className="w-6 h-6 text-yellow-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-slate-100">{stats.pending_tasks || 0}</p>
+                  <p className="text-slate-400 text-sm">Pending</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-slate-900/50 border-slate-700/30">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-green-900/20 rounded-lg">
+                  <CheckCircle className="w-6 h-6 text-green-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-slate-100">{stats.completed_tasks || 0}</p>
+                  <p className="text-slate-400 text-sm">Completed</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-slate-900/50 border-slate-700/30">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-emerald-900/20 rounded-lg">
+                  <DollarSign className="w-6 h-6 text-emerald-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-slate-100">
+                    ${(stats.total_project_value || 0).toLocaleString()}
+                  </p>
+                  <p className="text-slate-400 text-sm">Total Value</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Tasks Grid */}
+        <div className="space-y-6">
+          <h2 className="text-xl font-semibold text-slate-100">
+            {isAdmin ? 'All Tasks' : 'Your Tasks'}
+          </h2>
+          
+          {tasks.length === 0 ? (
+            <Card className="bg-slate-900/50 border-slate-700/30">
+              <CardContent className="p-12 text-center">
+                <Clock className="w-12 h-12 text-slate-600 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-slate-300 mb-2">No tasks yet</h3>
+                <p className="text-slate-500 mb-4">Create your first task to get started</p>
+                <Button onClick={() => setIsDialogOpen(true)} className="bg-blue-600 hover:bg-blue-700">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Task
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {tasks.map(task => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  onStatusUpdate={updateTaskStatus}
+                  onDelete={deleteTask}
+                  isAdmin={isAdmin}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
       
       <Toaster 
