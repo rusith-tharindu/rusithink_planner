@@ -356,73 +356,79 @@ class ProjectPlannerAPITester:
             "priority": "high"
         }
         
-        success, response = self.run_test("Create Task", "POST", "tasks", 200, data=task_data)
-        if success and 'id' in response:
-            self.created_task_id = response['id']
-            print(f"   Created task ID: {self.created_task_id}")
+    def test_create_task(self):
+        """Test task creation (legacy test - requires auth now)"""
+        # Create a task due tomorrow at 2 PM
+        due_date = datetime.now() + timedelta(days=1)
+        due_date = due_date.replace(hour=14, minute=0, second=0, microsecond=0)
+        
+        task_data = {
+            "title": "Website Redesign Project",
+            "description": "Complete redesign of company website with modern UI/UX",
+            "due_datetime": due_date.isoformat(),
+            "project_price": 5000.0,
+            "priority": "high"
+        }
+        
+        success, response, _ = self.run_test("Create Task (No Auth)", "POST", "tasks", 401, data=task_data)
         return success
 
     def test_get_tasks(self):
-        """Test getting all tasks"""
-        return self.run_test("Get All Tasks", "GET", "tasks", 200)
+        """Test getting all tasks (legacy test - requires auth now)"""
+        success, _, _ = self.run_test("Get All Tasks (No Auth)", "GET", "tasks", 401)
+        return success
 
     def test_get_single_task(self):
-        """Test getting a single task"""
-        if not self.created_task_id:
-            print("❌ No task ID available for single task test")
-            return False
-        
-        return self.run_test("Get Single Task", "GET", f"tasks/{self.created_task_id}", 200)
+        """Test getting a single task (legacy test - requires auth now)"""
+        fake_id = "test-task-id"
+        success, _, _ = self.run_test("Get Single Task (No Auth)", "GET", f"tasks/{fake_id}", 401)
+        return success
 
     def test_update_task_status(self):
-        """Test updating task status"""
-        if not self.created_task_id:
-            print("❌ No task ID available for status update test")
-            return False
-        
-        return self.run_test(
-            "Update Task Status", 
+        """Test updating task status (legacy test - requires auth now)"""
+        fake_id = "test-task-id"
+        success, _, _ = self.run_test(
+            "Update Task Status (No Auth)", 
             "PUT", 
-            f"tasks/{self.created_task_id}/status", 
-            200,
+            f"tasks/{fake_id}/status", 
+            401,
             params={"status": "completed"}
         )
+        return success
 
     def test_update_task(self):
-        """Test updating task details"""
-        if not self.created_task_id:
-            print("❌ No task ID available for task update test")
-            return False
-        
+        """Test updating task details (legacy test - requires auth now)"""
+        fake_id = "test-task-id"
         update_data = {
             "title": "Updated Website Redesign Project",
             "project_price": 6000.0
         }
         
-        return self.run_test(
-            "Update Task", 
+        success, _, _ = self.run_test(
+            "Update Task (No Auth)", 
             "PUT", 
-            f"tasks/{self.created_task_id}", 
-            200,
+            f"tasks/{fake_id}", 
+            401,
             data=update_data
         )
+        return success
 
     def test_get_stats(self):
-        """Test getting task statistics"""
-        return self.run_test("Get Task Stats", "GET", "tasks/stats/overview", 200)
+        """Test getting task statistics (legacy test - requires auth now)"""
+        success, _, _ = self.run_test("Get Task Stats (No Auth)", "GET", "tasks/stats/overview", 401)
+        return success
 
     def test_delete_task(self):
-        """Test deleting a task"""
-        if not self.created_task_id:
-            print("❌ No task ID available for delete test")
-            return False
-        
-        return self.run_test("Delete Task", "DELETE", f"tasks/{self.created_task_id}", 200)
+        """Test deleting a task (legacy test - requires auth now)"""
+        fake_id = "test-task-id"
+        success, _, _ = self.run_test("Delete Task (No Auth)", "DELETE", f"tasks/{fake_id}", 401)
+        return success
 
     def test_get_nonexistent_task(self):
-        """Test getting a non-existent task (should return 404)"""
+        """Test getting a non-existent task (should return 401 due to auth requirement)"""
         fake_id = "non-existent-task-id"
-        return self.run_test("Get Non-existent Task", "GET", f"tasks/{fake_id}", 404)
+        success, _, _ = self.run_test("Get Non-existent Task (No Auth)", "GET", f"tasks/{fake_id}", 401)
+        return success
 
 def main():
     print("🚀 Starting Project Planner API Tests")
