@@ -73,6 +73,7 @@ class User(BaseModel):
     name: str  # For display (computed from first_name + last_name or OAuth name)
     phone: Optional[str] = None
     company_name: Optional[str] = None
+    address: Optional[str] = None
     picture: Optional[str] = None
     role: UserRole = UserRole.CLIENT
     registration_type: str = "oauth"  # "oauth" or "manual"
