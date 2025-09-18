@@ -374,6 +374,146 @@ const CountdownTimer = ({ dueDateTime, status }) => {
   );
 };
 
+// Project Updates Dialog Component
+const ProjectUpdatesDialog = ({ task, isAdmin, open, onClose }) => {
+  const [updates, setUpdates] = useState([]);
+  const [newUpdate, setNewUpdate] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const fetchUpdates = async () => {
+    if (!open || !task) return;
+    
+    setLoading(true);
+    try {
+      const response = await axios.get(`${API}/tasks/${task.id}/updates`, { withCredentials: true });
+      setUpdates(response.data);
+    } catch (error) {
+      console.error('Error fetching updates:', error);
+      toast.error('Failed to load project updates');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addUpdate = async () => {
+    if (!newUpdate.trim()) return;
+    
+    setSubmitting(true);
+    try {
+      await axios.post(`${API}/tasks/${task.id}/updates`, 
+        { content: newUpdate }, 
+        { withCredentials: true }
+      );
+      
+      setNewUpdate('');
+      toast.success('Project update added successfully!');
+      fetchUpdates(); // Refresh updates
+    } catch (error) {
+      console.error('Error adding update:', error);
+      toast.error('Failed to add project update');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUpdates();
+  }, [open, task]);
+
+  if (!task) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="bg-slate-900 border-slate-700 text-slate-100 max-w-3xl max-h-[80vh] overflow-y-auto">
+        <DialogHeader className="sticky top-0 bg-slate-900 pb-4 border-b border-slate-700">
+          <DialogTitle className="flex items-center gap-3">
+            <MessageSquare className="w-5 h-5 text-blue-400" />
+            Project Updates - {task.title}
+          </DialogTitle>
+          <DialogDescription className="text-slate-400">
+            {isAdmin ? 'Add progress updates for this project' : 'View project progress updates'}
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-6">
+          {/* Add Update Form (Admin Only) */}
+          {isAdmin && (
+            <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
+              <Label className="text-slate-200 mb-2 block">Add Progress Update</Label>
+              <div className="space-y-3">
+                <Textarea
+                  value={newUpdate}
+                  onChange={(e) => setNewUpdate(e.target.value)}
+                  placeholder="Enter project progress update..."
+                  className="bg-slate-800 border-slate-600 text-slate-100 focus:border-blue-500 min-h-[100px]"
+                  rows={4}
+                />
+                <Button 
+                  onClick={addUpdate}
+                  disabled={submitting || !newUpdate.trim()}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  <Send className="w-4 h-4 mr-2" />
+                  {submitting ? 'Adding Update...' : 'Add Update'}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Updates List */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
+              <Clock className="w-5 h-5 text-slate-400" />
+              Progress Updates ({updates.length})
+            </h3>
+            
+            {loading ? (
+              <div className="text-center py-8">
+                <div className="loading-spinner mx-auto mb-4"></div>
+                <p className="text-slate-400">Loading updates...</p>
+              </div>
+            ) : updates.length === 0 ? (
+              <div className="text-center py-8">
+                <MessageSquare className="w-12 h-12 text-slate-600 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-slate-300 mb-2">No updates yet</h3>
+                <p className="text-slate-500">
+                  {isAdmin ? 'Add the first progress update for this project' : 'No progress updates have been added yet'}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {updates.map((update) => (
+                  <Card key={update.id} className="bg-slate-800/30 border-slate-700/30">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <Badge className="bg-red-900/20 text-red-400 border-red-700/30">
+                            ADMIN UPDATE
+                          </Badge>
+                          <span className="text-sm text-slate-400">
+                            by {update.created_by_name}
+                          </span>
+                        </div>
+                        <span className="text-sm text-slate-400">
+                          {format(new Date(update.created_at), 'PPp')}
+                        </span>
+                      </div>
+                      <p className="text-slate-200 leading-relaxed whitespace-pre-wrap">
+                        {update.content}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 // Task Card Component
 const TaskCard = ({ task, onStatusUpdate, onDelete, isAdmin }) => {
   const priorityColors = {
