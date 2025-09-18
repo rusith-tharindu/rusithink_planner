@@ -323,10 +323,10 @@ async def register_user(user_data: UserRegistration, response: Response):
         response.set_cookie(
             key="session_token",
             value=session_token,
-            max_age=7 * 24 * 60 * 60,
-            httponly=True,
-            secure=True,
-            samesite="none",
+            max_age=7 * 24 * 60 * 60,  # 7 days
+            httponly=False,  # Allow JavaScript access for debugging
+            secure=False,  # Allow non-HTTPS for testing
+            samesite="lax",  # Changed from "none" for better compatibility
             path="/"
         )
         
