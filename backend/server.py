@@ -375,8 +375,22 @@ async def get_tasks(request: Request):
             # Client sees only their own tasks
             tasks = await db.tasks.find({"created_by": user.id}).to_list(1000)
         
-        parsed_tasks = [parse_from_mongo(task) for task in tasks]
-        return [Task(**task) for task in parsed_tasks]
+        # Parse and handle legacy tasks
+        parsed_tasks = []
+        for task in tasks:
+            parsed_task = parse_from_mongo(task)
+            
+            # Handle legacy tasks missing required fields
+            if 'created_by' not in parsed_task:
+                parsed_task['created_by'] = None
+            if 'client_email' not in parsed_task:
+                parsed_task['client_email'] = None
+            if 'client_name' not in parsed_task:
+                parsed_task['client_name'] = None
+            
+            parsed_tasks.append(Task(**parsed_task))
+        
+        return parsed_tasks
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch tasks: {str(e)}")
 
