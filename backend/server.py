@@ -104,6 +104,10 @@ class ChatMessage(BaseModel):
     sender_role: str  # "admin" or "client"
     recipient_id: str  # User ID of recipient
     content: str
+    message_type: str = "text"  # "text", "file", "image"
+    file_url: Optional[str] = None  # URL to uploaded file
+    file_name: Optional[str] = None  # Original filename
+    file_size: Optional[int] = None  # File size in bytes
     is_read: bool = False
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
