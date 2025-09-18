@@ -213,35 +213,37 @@ const TaskForm = ({ onSubmit, onClose }) => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    due_datetime: '',
+    due_date: '',
+    due_time: '12:00',
     project_price: '',
     priority: 'medium'
   });
-  const [date, setDate] = useState(null);
-  const [time, setTime] = useState('12:00');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.title || !date) {
+    if (!formData.title || !formData.due_date) {
       toast.error('Please fill in required fields');
       return;
     }
 
     // Combine date and time
-    const [hours, minutes] = time.split(':');
-    const dueDateTime = new Date(date);
-    dueDateTime.setHours(parseInt(hours), parseInt(minutes));
+    const dueDateTime = new Date(`${formData.due_date}T${formData.due_time}:00`);
 
     const taskData = {
-      ...formData,
+      title: formData.title,
+      description: formData.description,
       due_datetime: dueDateTime.toISOString(),
-      project_price: formData.project_price ? parseFloat(formData.project_price) : null
+      project_price: formData.project_price ? parseFloat(formData.project_price) : null,
+      priority: formData.priority
     };
 
     await onSubmit(taskData);
     onClose();
   };
+
+  // Get today's date in YYYY-MM-DD format for min date
+  const today = new Date().toISOString().split('T')[0];
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -251,7 +253,7 @@ const TaskForm = ({ onSubmit, onClose }) => {
           id="title"
           value={formData.title}
           onChange={(e) => setFormData({...formData, title: e.target.value})}
-          className="bg-slate-800 border-slate-600 text-slate-100"
+          className="bg-slate-800 border-slate-600 text-slate-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
           placeholder="Enter task title"
           required
         />
@@ -263,7 +265,7 @@ const TaskForm = ({ onSubmit, onClose }) => {
           id="description"
           value={formData.description}
           onChange={(e) => setFormData({...formData, description: e.target.value})}
-          className="bg-slate-800 border-slate-600 text-slate-100"
+          className="bg-slate-800 border-slate-600 text-slate-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
           placeholder="Enter task description"
           rows={3}
         />
@@ -271,37 +273,26 @@ const TaskForm = ({ onSubmit, onClose }) => {
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label className="text-slate-200">Due Date *</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className="w-full justify-start text-left font-normal bg-slate-800 border-slate-600 text-slate-100"
-              >
-                <CalendarDays className="mr-2 h-4 w-4" />
-                {date ? format(date, 'PPP') : <span>Pick a date</span>}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0 bg-slate-800 border-slate-600" align="start">
-              <Calendar
-                mode="single"
-                selected={date}
-                onSelect={setDate}
-                disabled={(date) => date < new Date()}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
+          <Label htmlFor="due_date" className="text-slate-200">Due Date *</Label>
+          <Input
+            id="due_date"
+            type="date"
+            value={formData.due_date}
+            min={today}
+            onChange={(e) => setFormData({...formData, due_date: e.target.value})}
+            className="bg-slate-800 border-slate-600 text-slate-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            required
+          />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="time" className="text-slate-200">Due Time</Label>
+          <Label htmlFor="due_time" className="text-slate-200">Due Time</Label>
           <Input
-            id="time"
+            id="due_time"
             type="time"
-            value={time}
-            onChange={(e) => setTime(e.target.value)}
-            className="bg-slate-800 border-slate-600 text-slate-100"
+            value={formData.due_time}
+            onChange={(e) => setFormData({...formData, due_time: e.target.value})}
+            className="bg-slate-800 border-slate-600 text-slate-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
           />
         </div>
       </div>
@@ -310,37 +301,37 @@ const TaskForm = ({ onSubmit, onClose }) => {
         <div className="space-y-2">
           <Label htmlFor="priority" className="text-slate-200">Priority</Label>
           <Select value={formData.priority} onValueChange={(value) => setFormData({...formData, priority: value})}>
-            <SelectTrigger className="bg-slate-800 border-slate-600 text-slate-100">
+            <SelectTrigger className="bg-slate-800 border-slate-600 text-slate-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="bg-slate-800 border-slate-600">
-              <SelectItem value="low">Low</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="high">High</SelectItem>
+            <SelectContent className="bg-slate-800 border-slate-600 text-slate-100">
+              <SelectItem value="low" className="text-slate-100 hover:bg-slate-700">Low</SelectItem>
+              <SelectItem value="medium" className="text-slate-100 hover:bg-slate-700">Medium</SelectItem>
+              <SelectItem value="high" className="text-slate-100 hover:bg-slate-700">High</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="price" className="text-slate-200">Project Price ($)</Label>
+          <Label htmlFor="project_price" className="text-slate-200">Project Price ($)</Label>
           <Input
-            id="price"
+            id="project_price"
             type="number"
             min="0"
             step="0.01"
             value={formData.project_price}
             onChange={(e) => setFormData({...formData, project_price: e.target.value})}
-            className="bg-slate-800 border-slate-600 text-slate-100"
+            className="bg-slate-800 border-slate-600 text-slate-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             placeholder="0.00"
           />
         </div>
       </div>
 
       <div className="flex gap-4 pt-4">
-        <Button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700">
+        <Button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white">
           Create Task
         </Button>
-        <Button type="button" variant="outline" onClick={onClose} className="border-slate-600 text-slate-200">
+        <Button type="button" variant="outline" onClick={onClose} className="border-slate-600 text-slate-200 hover:bg-slate-700">
           Cancel
         </Button>
       </div>
