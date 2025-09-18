@@ -157,7 +157,14 @@ const Login = () => {
     <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <h2 className="text-3xl font-bold text-slate-100 mb-2">Project Planner</h2>
+          <div className="flex justify-center mb-4">
+            <img 
+              src="https://customer-assets.emergentagent.com/job_taskmaster-pro-11/artifacts/shvxprc6_Rusithink_logo.webp" 
+              alt="RusiThink Logo" 
+              className="h-16 w-auto"
+            />
+          </div>
+          <h2 className="text-3xl font-bold text-slate-100 mb-2">RusiThink</h2>
           <p className="text-slate-400">Sign in to manage your projects</p>
         </div>
 
