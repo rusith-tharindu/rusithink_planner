@@ -206,6 +206,11 @@ async def init_database():
         print("✅ Default admin account created: rusithink")
 
 # Authentication Routes
+@api_router.get("/")
+async def api_root():
+    """API root endpoint"""
+    return {"message": "Project Planning API is running", "status": "ok"}
+
 @api_router.post("/auth/admin-login", response_model=SessionResponse)
 async def admin_login(login_data: LoginRequest, response: Response):
     """Admin login with username/password"""
