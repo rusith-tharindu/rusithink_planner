@@ -157,6 +157,16 @@ class TaskUpdate(BaseModel):
 class ProjectUpdateCreate(BaseModel):
     content: str
 
+class ChatMessageCreate(BaseModel):
+    task_id: Optional[str] = None
+    content: str
+    recipient_id: str
+
+class MilestoneCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+    due_date: Optional[datetime] = None
+
 class UserRegistration(BaseModel):
     email: str
     password: str
