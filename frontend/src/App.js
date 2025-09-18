@@ -137,7 +137,17 @@ const Login = () => {
   const { login } = useAuth();
   const [adminLogin, setAdminLogin] = useState({ username: '', password: '' });
   const [showAdminLogin, setShowAdminLogin] = useState(false);
+  const [showRegister, setShowRegister] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [registerData, setRegisterData] = useState({
+    email: '',
+    password: '',
+    confirmPassword: '',
+    first_name: '',
+    last_name: '',
+    phone: '',
+    company_name: ''
+  });
 
   const handleOAuthLogin = () => {
     const redirectUrl = encodeURIComponent(`${window.location.origin}/dashboard`);
@@ -160,6 +170,36 @@ const Login = () => {
     }
   };
 
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    if (registerData.password !== registerData.confirmPassword) {
+      toast.error('Passwords do not match');
+      setLoading(false);
+      return;
+    }
+
+    if (registerData.password.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const { confirmPassword, ...registrationData } = registerData;
+      const response = await axios.post(`${API}/auth/register`, registrationData, { withCredentials: true });
+      await login(response.data.user);
+      toast.success(`Welcome ${response.data.user.name}! Registration successful.`);
+      navigate('/dashboard');
+    } catch (error) {
+      const message = error.response?.data?.detail || 'Registration failed';
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4">
       <div className="max-w-md w-full space-y-8">
@@ -172,18 +212,22 @@ const Login = () => {
             />
           </div>
           <h2 className="text-3xl font-bold text-slate-100 mb-2">RusiThink</h2>
-          <p className="text-slate-400">Sign in to manage your projects</p>
+          <p className="text-slate-400">
+            {showRegister ? 'Create your account' : 'Sign in to manage your projects'}
+          </p>
         </div>
 
         <Card className="bg-slate-900/50 border-slate-700/30">
           <CardHeader>
-            <CardTitle className="text-slate-100">Sign In to RusiThink</CardTitle>
+            <CardTitle className="text-slate-100">
+              {showRegister ? 'Sign Up for RusiThink' : 'Sign In to RusiThink'}
+            </CardTitle>
             <CardDescription className="text-slate-400">
-              Choose your sign-in method
+              {showRegister ? 'Fill in your details to get started' : 'Choose your sign-in method'}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {!showAdminLogin ? (
+            {!showAdminLogin && !showRegister ? (
               <>
                 <Button 
                   onClick={handleOAuthLogin}
@@ -202,17 +246,135 @@ const Login = () => {
                     <span className="bg-slate-900 px-2 text-slate-400">Or</span>
                   </div>
                 </div>
-                
-                <Button
-                  onClick={() => setShowAdminLogin(true)}
-                  variant="outline"
-                  className="w-full border-slate-600 text-slate-200 hover:bg-slate-800"
-                  size="lg"
-                >
-                  <Shield className="w-5 h-5 mr-2" />
-                  Admin Login
-                </Button>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <Button
+                    onClick={() => setShowRegister(true)}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white"
+                    size="lg"
+                  >
+                    <Plus className="w-5 h-5 mr-2" />
+                    Sign Up
+                  </Button>
+                  
+                  <Button
+                    onClick={() => setShowAdminLogin(true)}
+                    variant="outline"
+                    className="w-full border-slate-600 text-slate-200 hover:bg-slate-800"
+                    size="lg"
+                  >
+                    <Shield className="w-5 h-5 mr-2" />
+                    Admin
+                  </Button>
+                </div>
               </>
+            ) : showRegister ? (
+              <form onSubmit={handleRegister} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="first_name" className="text-slate-200">First Name *</Label>
+                    <Input
+                      id="first_name"
+                      type="text"
+                      value={registerData.first_name}
+                      onChange={(e) => setRegisterData({...registerData, first_name: e.target.value})}
+                      className="bg-slate-800 border-slate-600 text-slate-100"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="last_name" className="text-slate-200">Last Name *</Label>
+                    <Input
+                      id="last_name"
+                      type="text"
+                      value={registerData.last_name}
+                      onChange={(e) => setRegisterData({...registerData, last_name: e.target.value})}
+                      className="bg-slate-800 border-slate-600 text-slate-100"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="text-slate-200">Email *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={registerData.email}
+                    onChange={(e) => setRegisterData({...registerData, email: e.target.value})}
+                    className="bg-slate-800 border-slate-600 text-slate-100"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="phone" className="text-slate-200">Phone Number *</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    value={registerData.phone}
+                    onChange={(e) => setRegisterData({...registerData, phone: e.target.value})}
+                    className="bg-slate-800 border-slate-600 text-slate-100"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="company_name" className="text-slate-200">Company Name *</Label>
+                  <Input
+                    id="company_name"
+                    type="text"
+                    value={registerData.company_name}
+                    onChange={(e) => setRegisterData({...registerData, company_name: e.target.value})}
+                    className="bg-slate-800 border-slate-600 text-slate-100"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="password" className="text-slate-200">Password *</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={registerData.password}
+                    onChange={(e) => setRegisterData({...registerData, password: e.target.value})}
+                    className="bg-slate-800 border-slate-600 text-slate-100"
+                    required
+                    minLength={6}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword" className="text-slate-200">Confirm Password *</Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    value={registerData.confirmPassword}
+                    onChange={(e) => setRegisterData({...registerData, confirmPassword: e.target.value})}
+                    className="bg-slate-800 border-slate-600 text-slate-100"
+                    required
+                    minLength={6}
+                  />
+                </div>
+                
+                <div className="flex gap-3 pt-4">
+                  <Button 
+                    type="submit" 
+                    disabled={loading}
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    {loading ? 'Creating Account...' : 'Create Account'}
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => setShowRegister(false)}
+                    variant="outline"
+                    className="border-slate-600 text-slate-200"
+                  >
+                    Back
+                  </Button>
+                </div>
+              </form>
             ) : (
               <form onSubmit={handleAdminLogin} className="space-y-4">
                 <div className="space-y-2">
