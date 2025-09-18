@@ -536,6 +536,228 @@ const CountdownTimer = ({ dueDateTime, status }) => {
   );
 };
 
+// Users Management Component (Admin Only)
+const UsersManagement = ({ users, onRefresh }) => {
+  const [editingUser, setEditingUser] = useState(null);
+  const [editForm, setEditForm] = useState({});
+
+  const handleEdit = (user) => {
+    setEditingUser(user.id);
+    setEditForm({
+      first_name: user.first_name || '',
+      last_name: user.last_name || '',
+      phone: user.phone || '',
+      company_name: user.company_name || '',
+      email: user.email || ''
+    });
+  };
+
+  const handleSaveEdit = async (userId) => {
+    try {
+      await axios.put(`${API}/admin/users/${userId}`, editForm, { withCredentials: true });
+      toast.success('User updated successfully!');
+      setEditingUser(null);
+      onRefresh();
+    } catch (error) {
+      const message = error.response?.data?.detail || 'Failed to update user';
+      toast.error(message);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingUser(null);
+    setEditForm({});
+  };
+
+  const handleExportCSV = async () => {
+    try {
+      const response = await axios.get(`${API}/admin/users/export/csv`, { 
+        withCredentials: true,
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'users_export.csv');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success('CSV exported successfully!');
+    } catch (error) {
+      toast.error('Failed to export CSV');
+    }
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      const response = await axios.get(`${API}/admin/users/export/pdf`, { 
+        withCredentials: true,
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'users_export.pdf');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success('PDF exported successfully!');
+    } catch (error) {
+      toast.error('Failed to export PDF');
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold text-slate-100 flex items-center gap-2">
+          <Users className="w-5 h-5 text-slate-400" />
+          User Management ({users.length} users)
+        </h2>
+        <div className="flex gap-2">
+          <Button onClick={handleExportCSV} variant="outline" size="sm" className="border-slate-600 text-slate-200">
+            <Download className="w-4 h-4 mr-2" />
+            Export CSV
+          </Button>
+          <Button onClick={handleExportPDF} variant="outline" size="sm" className="border-slate-600 text-slate-200">
+            <Download className="w-4 h-4 mr-2" />
+            Export PDF
+          </Button>
+        </div>
+      </div>
+
+      <Card className="bg-slate-900/50 border-slate-700/30">
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-slate-800/50 border-b border-slate-700">
+                <tr>
+                  <th className="text-left p-4 text-slate-200 font-medium">Email</th>
+                  <th className="text-left p-4 text-slate-200 font-medium">Name</th>
+                  <th className="text-left p-4 text-slate-200 font-medium">Phone</th>
+                  <th className="text-left p-4 text-slate-200 font-medium">Company</th>
+                  <th className="text-left p-4 text-slate-200 font-medium">Type</th>
+                  <th className="text-left p-4 text-slate-200 font-medium">Joined</th>
+                  <th className="text-left p-4 text-slate-200 font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((user) => (
+                  <tr key={user.id} className="border-b border-slate-700/30 hover:bg-slate-800/30">
+                    <td className="p-4">
+                      {editingUser === user.id ? (
+                        <Input
+                          value={editForm.email}
+                          onChange={(e) => setEditForm({...editForm, email: e.target.value})}
+                          className="bg-slate-800 border-slate-600 text-slate-100 text-sm"
+                        />
+                      ) : (
+                        <span className="text-slate-200 text-sm">{user.email}</span>
+                      )}
+                    </td>
+                    <td className="p-4">
+                      {editingUser === user.id ? (
+                        <div className="space-y-2">
+                          <Input
+                            placeholder="First Name"
+                            value={editForm.first_name}
+                            onChange={(e) => setEditForm({...editForm, first_name: e.target.value})}
+                            className="bg-slate-800 border-slate-600 text-slate-100 text-sm"
+                          />
+                          <Input
+                            placeholder="Last Name"
+                            value={editForm.last_name}
+                            onChange={(e) => setEditForm({...editForm, last_name: e.target.value})}
+                            className="bg-slate-800 border-slate-600 text-slate-100 text-sm"
+                          />
+                        </div>
+                      ) : (
+                        <span className="text-slate-200 text-sm">
+                          {user.first_name && user.last_name 
+                            ? `${user.first_name} ${user.last_name}` 
+                            : user.name || 'N/A'}
+                        </span>
+                      )}
+                    </td>
+                    <td className="p-4">
+                      {editingUser === user.id ? (
+                        <Input
+                          value={editForm.phone}
+                          onChange={(e) => setEditForm({...editForm, phone: e.target.value})}
+                          className="bg-slate-800 border-slate-600 text-slate-100 text-sm"
+                        />
+                      ) : (
+                        <span className="text-slate-300 text-sm">{user.phone || 'N/A'}</span>
+                      )}
+                    </td>
+                    <td className="p-4">
+                      {editingUser === user.id ? (
+                        <Input
+                          value={editForm.company_name}
+                          onChange={(e) => setEditForm({...editForm, company_name: e.target.value})}
+                          className="bg-slate-800 border-slate-600 text-slate-100 text-sm"
+                        />
+                      ) : (
+                        <span className="text-slate-300 text-sm">{user.company_name || 'N/A'}</span>
+                      )}
+                    </td>
+                    <td className="p-4">
+                      <Badge className={`text-xs ${
+                        user.registration_type === 'manual' 
+                          ? 'bg-green-900/20 text-green-400 border-green-700/30' 
+                          : 'bg-blue-900/20 text-blue-400 border-blue-700/30'
+                      }`}>
+                        {user.registration_type || 'oauth'}
+                      </Badge>
+                    </td>
+                    <td className="p-4">
+                      <span className="text-slate-400 text-sm">
+                        {user.created_at ? format(new Date(user.created_at), 'MMM dd, yyyy') : 'N/A'}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      {editingUser === user.id ? (
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => handleSaveEdit(user.id)}
+                            className="bg-green-600 hover:bg-green-700 text-white"
+                          >
+                            <Save className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={handleCancelEdit}
+                            className="border-slate-600 text-slate-200"
+                          >
+                            <X className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleEdit(user)}
+                          className="text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
+                        >
+                          <Edit2 className="w-3 h-3" />
+                        </Button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
 // Project Updates Dialog Component
 const ProjectUpdatesDialog = ({ task, isAdmin, open, onClose }) => {
   const [updates, setUpdates] = useState([]);
