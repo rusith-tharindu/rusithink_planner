@@ -103,6 +103,9 @@ class TaskUpdate(BaseModel):
     status: Optional[TaskStatus] = None
     priority: Optional[TaskPriority] = None
 
+class ProjectUpdateCreate(BaseModel):
+    content: str
+
 class LoginRequest(BaseModel):
     username: str
     password: str
