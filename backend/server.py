@@ -71,9 +71,9 @@ class Task(BaseModel):
     project_price: Optional[float] = None
     status: TaskStatus = TaskStatus.PENDING
     priority: TaskPriority = TaskPriority.MEDIUM
-    created_by: str  # User ID
-    client_email: str  # For admin reference
-    client_name: str   # For admin reference
+    created_by: Optional[str] = None  # User ID (optional for backward compatibility)
+    client_email: Optional[str] = None  # For admin reference (optional for backward compatibility)
+    client_name: Optional[str] = None   # For admin reference (optional for backward compatibility)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
