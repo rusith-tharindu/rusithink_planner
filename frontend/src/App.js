@@ -170,7 +170,7 @@ const Login = () => {
 
         <Card className="bg-slate-900/50 border-slate-700/30">
           <CardHeader>
-            <CardTitle className="text-slate-100">Sign In</CardTitle>
+            <CardTitle className="text-slate-100">Sign In to RusiThink</CardTitle>
             <CardDescription className="text-slate-400">
               Choose your sign-in method
             </CardDescription>
