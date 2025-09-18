@@ -50,9 +50,15 @@ class UserRole(str, Enum):
 class User(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     email: str
-    name: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    name: str  # For display (computed from first_name + last_name or OAuth name)
+    phone: Optional[str] = None
+    company_name: Optional[str] = None
     picture: Optional[str] = None
     role: UserRole = UserRole.CLIENT
+    registration_type: str = "oauth"  # "oauth" or "manual"
+    password_hash: Optional[str] = None  # Only for manual registration
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
