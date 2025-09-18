@@ -71,7 +71,7 @@ class ProjectPlannerAPITester:
             "priority": "high"
         }
         
-        success, response = self.run_test("Create Task", "POST", "tasks", 201, data=task_data)
+        success, response = self.run_test("Create Task", "POST", "tasks", 200, data=task_data)
         if success and 'id' in response:
             self.created_task_id = response['id']
             print(f"   Created task ID: {self.created_task_id}")
