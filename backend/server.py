@@ -28,6 +28,10 @@ import mimetypes
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
+# Create uploads directory
+UPLOADS_DIR = ROOT_DIR / 'uploads'
+UPLOADS_DIR.mkdir(exist_ok=True)
+
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
@@ -35,6 +39,9 @@ db = client[os.environ['DB_NAME']]
 
 # Create the main app without a prefix
 app = FastAPI(title="Project Planning API")
+
+# Mount static files for uploaded content
+app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
