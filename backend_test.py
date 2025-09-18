@@ -431,44 +431,84 @@ class ProjectPlannerAPITester:
         return success
 
 def main():
-    print("🚀 Starting Project Planner API Tests")
-    print("=" * 50)
+    print("🚀 Starting Project Planner Authentication & Authorization Tests")
+    print("=" * 70)
     
     tester = ProjectPlannerAPITester()
     
-    # Test sequence
+    # Test sequence - Authentication & Authorization Focus
     test_results = []
+    
+    print("\n🔐 AUTHENTICATION TESTS")
+    print("-" * 30)
     
     # Basic connectivity
     test_results.append(tester.test_api_root())
     
-    # CRUD operations
+    # Authentication tests
+    test_results.append(tester.test_admin_login_success())
+    test_results.append(tester.test_admin_login_invalid_credentials())
+    test_results.append(tester.test_admin_login_invalid_username())
+    test_results.append(tester.test_get_current_user_authenticated())
+    test_results.append(tester.test_get_current_user_unauthenticated())
+    
+    # OAuth tests (will fail with external service, but tests error handling)
+    test_results.append(tester.test_oauth_session_missing_header())
+    test_results.append(tester.test_oauth_session_invalid_id())
+    
+    print("\n🛡️  AUTHORIZATION TESTS")
+    print("-" * 30)
+    
+    # Re-login for authorization tests (in case logout cleared session)
+    if not tester.admin_cookies:
+        print("Re-authenticating for authorization tests...")
+        tester.test_admin_login_success()
+    
+    # Admin-specific operations
+    test_results.append(tester.test_create_task_as_admin())
+    test_results.append(tester.test_get_tasks_as_admin())
+    test_results.append(tester.test_get_task_stats_as_admin())
+    test_results.append(tester.test_admin_get_all_users())
+    test_results.append(tester.test_delete_task_as_admin())
+    
+    # Protected routes without authentication
+    test_results.append(tester.test_protected_routes_without_auth())
+    
+    print("\n🔒 SECURITY TESTS")
+    print("-" * 30)
+    
+    # Test logout
+    test_results.append(tester.test_logout())
+    
+    # Legacy CRUD tests (should all fail with 401 now)
+    print("\n📋 LEGACY CRUD TESTS (Should require auth)")
+    print("-" * 30)
     test_results.append(tester.test_create_task())
     test_results.append(tester.test_get_tasks())
     test_results.append(tester.test_get_single_task())
     test_results.append(tester.test_update_task_status())
     test_results.append(tester.test_update_task())
-    
-    # Stats
     test_results.append(tester.test_get_stats())
-    
-    # Error handling
-    test_results.append(tester.test_get_nonexistent_task())
-    
-    # Cleanup
     test_results.append(tester.test_delete_task())
+    test_results.append(tester.test_get_nonexistent_task())
 
     # Print final results
-    print("\n" + "=" * 50)
+    print("\n" + "=" * 70)
     print(f"📊 FINAL RESULTS")
     print(f"Tests passed: {tester.tests_passed}/{tester.tests_run}")
     print(f"Success rate: {(tester.tests_passed/tester.tests_run)*100:.1f}%")
     
     if tester.tests_passed == tester.tests_run:
-        print("🎉 All tests passed! Backend API is working correctly.")
+        print("🎉 All authentication and authorization tests passed!")
+        print("✅ Admin login works with correct credentials")
+        print("✅ Invalid credentials are properly rejected")
+        print("✅ Role-based access control is working")
+        print("✅ Protected routes require authentication")
+        print("✅ Admin-only operations are properly secured")
         return 0
     else:
-        print("⚠️  Some tests failed. Check the backend implementation.")
+        failed_tests = tester.tests_run - tester.tests_passed
+        print(f"⚠️  {failed_tests} tests failed. Check the authentication implementation.")
         return 1
 
 if __name__ == "__main__":
