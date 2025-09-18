@@ -381,18 +381,31 @@ async def process_oauth_session(request: Request, response: Response):
         
         if existing_user:
             existing_user = parse_from_mongo(existing_user)
-            user = User(**existing_user)
+            user_dict = existing_user
+            # Update name if needed
+            if 'name' not in user_dict or not user_dict['name']:
+                user_dict['name'] = auth_data["name"]
         else:
             # Create new client user
-            user = User(
-                email=auth_data["email"],
-                name=auth_data["name"],
-                picture=auth_data.get("picture"),
-                role=UserRole.CLIENT
-            )
+            user_dict = {
+                "id": str(uuid.uuid4()),
+                "email": auth_data["email"],
+                "name": auth_data["name"],
+                "first_name": None,
+                "last_name": None,
+                "phone": None,
+                "company_name": None,
+                "picture": auth_data.get("picture"),
+                "role": UserRole.CLIENT.value,
+                "registration_type": "oauth",
+                "password_hash": None,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
             
-            user_data = prepare_for_mongo(user.dict())
-            await db.users.insert_one(user_data)
+            await db.users.insert_one(user_dict)
+        
+        user = User(**user_dict)
         
         # Create session with auth_data session_token
         session_token = auth_data["session_token"]
