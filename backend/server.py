@@ -182,11 +182,13 @@ async def get_current_user(request: Request) -> Optional[User]:
             session_token = auth_header.split(" ")[1]
     
     if not session_token:
+        logger.info("No session token found in cookies or headers")
         return None
     
     # Find session in database
     session_data = await db.sessions.find_one({"session_token": session_token})
     if not session_data:
+        logger.info(f"Session not found for token: {session_token[:10]}...")
         return None
     
     session_data = parse_from_mongo(session_data)
@@ -195,14 +197,32 @@ async def get_current_user(request: Request) -> Optional[User]:
     # Check if session is expired
     if session.expires_at < datetime.now(timezone.utc):
         await db.sessions.delete_one({"session_token": session_token})
+        logger.info(f"Session expired for token: {session_token[:10]}...")
         return None
     
     # Get user
     user_data = await db.users.find_one({"id": session.user_id})
     if not user_data:
+        logger.info(f"User not found for session user_id: {session.user_id}")
         return None
     
     user_data = parse_from_mongo(user_data)
+    
+    # Ensure all required fields exist for backward compatibility
+    if 'first_name' not in user_data:
+        user_data['first_name'] = None
+    if 'last_name' not in user_data:
+        user_data['last_name'] = None
+    if 'phone' not in user_data:
+        user_data['phone'] = None
+    if 'company_name' not in user_data:
+        user_data['company_name'] = None
+    if 'registration_type' not in user_data:
+        user_data['registration_type'] = "oauth"
+    if 'password_hash' not in user_data:
+        user_data['password_hash'] = None
+    
+    logger.info(f"User authenticated: {user_data['email']} (role: {user_data.get('role', 'unknown')})")
     return User(**user_data)
 
 async def require_admin(request: Request) -> User:
