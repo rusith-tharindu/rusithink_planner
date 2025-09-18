@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import "./App.css";
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
@@ -12,7 +12,7 @@ import { Textarea } from "./components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./components/ui/select";
 import { Badge } from "./components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "./components/ui/dialog";
-import { CalendarDays, Clock, DollarSign, Plus, CheckCircle, AlertCircle, Timer, Trash2, LogOut, User, Shield, Users, MessageSquare, Bell, Send, Eye, Download, Edit2, Save, X } from "lucide-react";
+import { CalendarDays, Clock, DollarSign, Plus, CheckCircle, AlertCircle, Timer, Trash2, LogOut, User, Shield, Users, MessageSquare, Bell, Send, Eye, Download, Edit2, Save, X, Upload, Image as ImageIcon, FileText, Paperclip } from "lucide-react";
 import { format } from "date-fns";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -427,6 +427,356 @@ const Login = () => {
   );
 };
 
+// Chat Component
+const ChatSystem = ({ user, adminUserId, taskId = null }) => {
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const messagesEndRef = useRef(null);
+  const fileInputRef = useRef(null);
+
+  const recipientId = user.role === 'admin' ? null : adminUserId; // For clients, recipient is admin
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const fetchMessages = async () => {
+    setLoading(true);
+    try {
+      const params = taskId ? `?task_id=${taskId}` : '';
+      const response = await axios.get(`${API}/chat/messages${params}`, { withCredentials: true });
+      setMessages(response.data);
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const sendMessage = async () => {
+    if (!newMessage.trim() || !recipientId) return;
+
+    try {
+      const messageData = {
+        content: newMessage,
+        recipient_id: recipientId,
+        task_id: taskId
+      };
+
+      await axios.post(`${API}/chat/messages`, messageData, { withCredentials: true });
+      setNewMessage('');
+      fetchMessages(); // Refresh messages
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast.error('Failed to send message');
+    }
+  };
+
+  const handleFileUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file || !recipientId) return;
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('recipient_id', recipientId);
+      formData.append('content', `Shared file: ${file.name}`);
+      if (taskId) formData.append('task_id', taskId);
+
+      await axios.post(`${API}/chat/upload`, formData, {
+        withCredentials: true,
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      fetchMessages(); // Refresh messages
+      toast.success('File uploaded successfully');
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      toast.error('Failed to upload file');
+    } finally {
+      setUploading(false);
+      event.target.value = ''; // Clear file input
+    }
+  };
+
+  useEffect(() => {
+    if (recipientId) {
+      fetchMessages();
+      // Set up polling for new messages
+      const interval = setInterval(fetchMessages, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [recipientId, taskId]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  if (!recipientId) {
+    return (
+      <div className="flex items-center justify-center h-64 text-slate-400">
+        Chat system loading...
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col h-96 bg-slate-900/50 rounded-lg border border-slate-700/30">
+      {/* Chat Header */}
+      <div className="p-4 border-b border-slate-700/30">
+        <h3 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
+          <MessageSquare className="w-5 h-5 text-blue-400" />
+          {taskId ? 'Project Chat' : 'General Chat'}
+        </h3>
+        <p className="text-sm text-slate-400">
+          {user.role === 'admin' ? 'Chat with client' : 'Chat with admin'}
+        </p>
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {loading ? (
+          <div className="text-center py-8">
+            <div className="loading-spinner mx-auto mb-4"></div>
+            <p className="text-slate-400">Loading messages...</p>
+          </div>
+        ) : messages.length === 0 ? (
+          <div className="text-center py-8">
+            <MessageSquare className="w-12 h-12 text-slate-600 mx-auto mb-4" />
+            <p className="text-slate-400">No messages yet. Start the conversation!</p>
+          </div>
+        ) : (
+          messages.map((message) => (
+            <div
+              key={message.id}
+              className={`flex ${message.sender_id === user.id ? 'justify-end' : 'justify-start'}`}
+            >
+              <div
+                className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                  message.sender_id === user.id
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-slate-800 text-slate-100'
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xs font-medium">
+                    {message.sender_name}
+                  </span>
+                  <Badge className={`text-xs ${
+                    message.sender_role === 'admin' 
+                      ? 'bg-red-900/20 text-red-400 border-red-700/30'
+                      : 'bg-blue-900/20 text-blue-400 border-blue-700/30'
+                  }`}>
+                    {message.sender_role.toUpperCase()}
+                  </Badge>
+                </div>
+                
+                {message.message_type === 'file' && (
+                  <div className="mb-2">
+                    <a
+                      href={`${BACKEND_URL}${message.file_url}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-blue-300 hover:text-blue-200"
+                    >
+                      <FileText className="w-4 h-4" />
+                      {message.file_name}
+                    </a>
+                  </div>
+                )}
+                
+                {message.message_type === 'image' && (
+                  <div className="mb-2">
+                    <img
+                      src={`${BACKEND_URL}${message.file_url}`}
+                      alt={message.file_name}
+                      className="max-w-full h-auto rounded cursor-pointer"
+                      onClick={() => window.open(`${BACKEND_URL}${message.file_url}`, '_blank')}
+                    />
+                  </div>
+                )}
+                
+                <p className="text-sm">{message.content}</p>
+                <p className="text-xs opacity-70 mt-1">
+                  {format(new Date(message.created_at), 'HH:mm')}
+                </p>
+              </div>
+            </div>
+          ))
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Message Input */}
+      <div className="p-4 border-t border-slate-700/30">
+        <div className="flex gap-2">
+          <Input
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            placeholder="Type your message..."
+            className="flex-1 bg-slate-800 border-slate-600 text-slate-100"
+            onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+          />
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+            className="hidden"
+            accept="image/*,.pdf,.doc,.docx,.txt"
+          />
+          <Button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            variant="outline"
+            size="sm"
+            className="border-slate-600 text-slate-200"
+          >
+            {uploading ? <div className="loading-spinner w-4 h-4" /> : <Paperclip className="w-4 h-4" />}
+          </Button>
+          <Button
+            onClick={sendMessage}
+            disabled={!newMessage.trim()}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            <Send className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Project Timeline Component
+const ProjectTimeline = ({ task, user }) => {
+  const [milestones, setMilestones] = useState([]);
+  const [updates, setUpdates] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchTimelineData = async () => {
+    setLoading(true);
+    try {
+      // Fetch milestones and updates
+      const [milestonesRes, updatesRes] = await Promise.all([
+        axios.get(`${API}/tasks/${task.id}/milestones`, { withCredentials: true }),
+        axios.get(`${API}/tasks/${task.id}/updates`, { withCredentials: true })
+      ]);
+      
+      setMilestones(milestonesRes.data);
+      setUpdates(updatesRes.data);
+    } catch (error) {
+      console.error('Error fetching timeline data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (task?.id) {
+      fetchTimelineData();
+    }
+  }, [task?.id]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="loading-spinner mx-auto mb-4"></div>
+        <p className="text-slate-400">Loading timeline...</p>
+      </div>
+    );
+  }
+
+  // Combine milestones and updates into a single timeline
+  const timelineItems = [
+    ...milestones.map(m => ({ ...m, type: 'milestone' })),
+    ...updates.map(u => ({ ...u, type: 'update' }))
+  ].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-2 mb-6">
+        <Clock className="w-5 h-5 text-blue-400" />
+        <h3 className="text-lg font-semibold text-slate-100">Project Timeline</h3>
+      </div>
+
+      {timelineItems.length === 0 ? (
+        <div className="text-center py-8">
+          <Clock className="w-12 h-12 text-slate-600 mx-auto mb-4" />
+          <p className="text-slate-400">No timeline events yet</p>
+        </div>
+      ) : (
+        <div className="relative">
+          {/* Timeline line */}
+          <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-slate-700"></div>
+          
+          <div className="space-y-6">
+            {timelineItems.map((item, index) => (
+              <div key={`${item.type}-${item.id}`} className="relative flex items-start gap-4">
+                {/* Timeline dot */}
+                <div className={`relative z-10 w-3 h-3 rounded-full border-2 ${
+                  item.type === 'milestone' 
+                    ? (item.status === 'completed' ? 'bg-green-500 border-green-500' : 'bg-blue-500 border-blue-500')
+                    : 'bg-purple-500 border-purple-500'
+                }`}></div>
+                
+                {/* Timeline content */}
+                <div className="flex-1 pb-6">
+                  <Card className="bg-slate-800/50 border-slate-700/30">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <h4 className="font-medium text-slate-100">
+                            {item.type === 'milestone' ? item.title : 'Project Update'}
+                          </h4>
+                          <p className="text-sm text-slate-400">
+                            {format(new Date(item.created_at), 'MMM dd, yyyy HH:mm')}
+                          </p>
+                        </div>
+                        <Badge className={`text-xs ${
+                          item.type === 'milestone'
+                            ? (item.status === 'completed' 
+                                ? 'bg-green-900/20 text-green-400 border-green-700/30'
+                                : item.status === 'in_progress'
+                                ? 'bg-yellow-900/20 text-yellow-400 border-yellow-700/30'
+                                : 'bg-blue-900/20 text-blue-400 border-blue-700/30')
+                            : 'bg-purple-900/20 text-purple-400 border-purple-700/30'
+                        }`}>
+                          {item.type === 'milestone' ? item.status.toUpperCase() : 'UPDATE'}
+                        </Badge>
+                      </div>
+                      
+                      <p className="text-slate-300 text-sm leading-relaxed">
+                        {item.type === 'milestone' ? item.description : item.content}
+                      </p>
+                      
+                      {item.type === 'milestone' && item.due_date && (
+                        <p className="text-xs text-slate-500 mt-2">
+                          Due: {format(new Date(item.due_date), 'MMM dd, yyyy')}
+                        </p>
+                      )}
+                      
+                      {item.type === 'update' && item.created_by_name && (
+                        <p className="text-xs text-slate-500 mt-2">
+                          by {item.created_by_name}
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Continue with the rest of the components (CountdownTimer, TaskCard, etc.) - same as before
+// I'll include them for completeness but they remain largely unchanged
+
 // Countdown Timer Component
 const CountdownTimer = ({ dueDateTime, status }) => {
   const [timeRemaining, setTimeRemaining] = useState({
@@ -536,7 +886,7 @@ const CountdownTimer = ({ dueDateTime, status }) => {
   );
 };
 
-// Project Updates Dialog Component
+// Project Updates Dialog Component  
 const ProjectUpdatesDialog = ({ task, isAdmin, open, onClose }) => {
   const [updates, setUpdates] = useState([]);
   const [newUpdate, setNewUpdate] = useState('');
@@ -928,12 +1278,26 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [adminUser, setAdminUser] = useState(null);
+  const [selectedTask, setSelectedTask] = useState(null);
 
   const isAdmin = user?.role === 'admin';
+  const isClient = user?.role === 'client';
+
+  const fetchAdminUser = async () => {
+    if (isClient) {
+      try {
+        // Get admin user for chat
+        const response = await axios.get(`${API}/admin/users`, { withCredentials: true });
+        const admin = response.data.find(u => u.role === 'admin');
+        setAdminUser(admin);
+      } catch (error) {
+        console.error('Error fetching admin user:', error);
+      }
+    }
+  };
 
   const fetchUnreadCount = async () => {
-    if (isAdmin) return; // Admin doesn't have notifications for now
-    
     try {
       const response = await axios.get(`${API}/notifications/unread-count`, { withCredentials: true });
       setUnreadCount(response.data.unread_count || 0);
@@ -947,10 +1311,12 @@ const Dashboard = () => {
       const response = await axios.get(`${API}/tasks`, { withCredentials: true });
       setTasks(response.data);
       
-      // Update unread count after fetching tasks
-      if (!isAdmin) {
-        fetchUnreadCount();
+      // Set first task as selected for timeline (client only)
+      if (isClient && response.data.length > 0 && !selectedTask) {
+        setSelectedTask(response.data[0]);
       }
+      
+      fetchUnreadCount();
     } catch (error) {
       console.error('Error fetching tasks:', error);
       toast.error('Failed to load tasks');
@@ -1007,18 +1373,19 @@ const Dashboard = () => {
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      await Promise.all([fetchTasks(), fetchStats()]);
+      await Promise.all([fetchTasks(), fetchStats(), fetchAdminUser()]);
       setLoading(false);
     };
     
     loadData();
     
-    // Polling for unread notifications every 30 seconds for clients
-    if (!isAdmin) {
-      const interval = setInterval(fetchUnreadCount, 30000);
-      return () => clearInterval(interval);
-    }
-  }, [isAdmin]);
+    // Polling for updates
+    const interval = setInterval(() => {
+      fetchUnreadCount();
+    }, 30000);
+    
+    return () => clearInterval(interval);
+  }, [isClient]);
 
   if (loading) {
     return (
@@ -1061,8 +1428,8 @@ const Dashboard = () => {
             </div>
             
             <div className="flex gap-3">
-              {/* Notification Bell for Clients */}
-              {!isAdmin && unreadCount > 0 && (
+              {/* Notification Bell */}
+              {unreadCount > 0 && (
                 <div className="relative">
                   <Bell className="w-6 h-6 text-orange-400" />
                   <Badge className="absolute -top-2 -right-2 bg-orange-600 text-white text-xs min-w-[20px] h-5 rounded-full flex items-center justify-center">
@@ -1117,96 +1484,128 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-slate-900/50 border-slate-700/30">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-blue-900/20 rounded-lg">
-                  <Clock className="w-6 h-6 text-blue-400" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-slate-100">{stats.total_tasks || 0}</p>
-                  <p className="text-slate-400 text-sm">Total Tasks</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Content Area */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <Card className="bg-slate-900/50 border-slate-700/30">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-blue-900/20 rounded-lg">
+                      <Clock className="w-6 h-6 text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-slate-100">{stats.total_tasks || 0}</p>
+                      <p className="text-slate-400 text-sm">Total Tasks</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-          <Card className="bg-slate-900/50 border-slate-700/30">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-yellow-900/20 rounded-lg">
-                  <AlertCircle className="w-6 h-6 text-yellow-400" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-slate-100">{stats.pending_tasks || 0}</p>
-                  <p className="text-slate-400 text-sm">Pending</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              <Card className="bg-slate-900/50 border-slate-700/30">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-yellow-900/20 rounded-lg">
+                      <AlertCircle className="w-6 h-6 text-yellow-400" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-slate-100">{stats.pending_tasks || 0}</p>
+                      <p className="text-slate-400 text-sm">Pending</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-          <Card className="bg-slate-900/50 border-slate-700/30">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-green-900/20 rounded-lg">
-                  <CheckCircle className="w-6 h-6 text-green-400" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-slate-100">{stats.completed_tasks || 0}</p>
-                  <p className="text-slate-400 text-sm">Completed</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              <Card className="bg-slate-900/50 border-slate-700/30">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-green-900/20 rounded-lg">
+                      <CheckCircle className="w-6 h-6 text-green-400" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-slate-100">{stats.completed_tasks || 0}</p>
+                      <p className="text-slate-400 text-sm">Completed</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-          <Card className="bg-slate-900/50 border-slate-700/30">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-emerald-900/20 rounded-lg">
-                  <DollarSign className="w-6 h-6 text-emerald-400" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-slate-100">
-                    ${(stats.total_project_value || 0).toLocaleString()}
-                  </p>
-                  <p className="text-slate-400 text-sm">Total Value</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              <Card className="bg-slate-900/50 border-slate-700/30">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-emerald-900/20 rounded-lg">
+                      <DollarSign className="w-6 h-6 text-emerald-400" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-slate-100">
+                        ${(stats.total_project_value || 0).toLocaleString()}
+                      </p>
+                      <p className="text-slate-400 text-sm">Total Value</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
 
-        {/* Tasks Grid */}
-        <div className="space-y-6">
-          <h2 className="text-xl font-semibold text-slate-100">
-            {isAdmin ? 'All Tasks' : 'Your Tasks'}
-          </h2>
-          
-          {tasks.length === 0 ? (
-            <Card className="bg-slate-900/50 border-slate-700/30">
-              <CardContent className="p-12 text-center">
-                <Clock className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-slate-300 mb-2">No tasks yet</h3>
-                <p className="text-slate-500 mb-4">Create your first task to get started</p>
-                <Button onClick={() => setIsDialogOpen(true)} className="bg-blue-600 hover:bg-blue-700">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create Task
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {tasks.map(task => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  onStatusUpdate={updateTaskStatus}
-                  onDelete={deleteTask}
-                  isAdmin={isAdmin}
-                />
-              ))}
+            {/* Tasks Grid */}
+            <div className="space-y-6">
+              <h2 className="text-xl font-semibold text-slate-100">
+                {isAdmin ? 'All Tasks' : 'Your Tasks'}
+              </h2>
+              
+              {tasks.length === 0 ? (
+                <Card className="bg-slate-900/50 border-slate-700/30">
+                  <CardContent className="p-12 text-center">
+                    <Clock className="w-12 h-12 text-slate-600 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-slate-300 mb-2">No tasks yet</h3>
+                    <p className="text-slate-500 mb-4">Create your first task to get started</p>
+                    <Button onClick={() => setIsDialogOpen(true)} className="bg-blue-600 hover:bg-blue-700">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create Task
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 gap-6">
+                  {tasks.map(task => (
+                    <TaskCard
+                      key={task.id}
+                      task={task}
+                      onStatusUpdate={updateTaskStatus}
+                      onDelete={deleteTask}
+                      isAdmin={isAdmin}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right Sidebar - Timeline & Chat for Clients */}
+          {isClient && (
+            <div className="space-y-6">
+              {/* Project Timeline */}
+              {selectedTask && (
+                <Card className="bg-slate-900/50 border-slate-700/30">
+                  <CardContent className="p-6">
+                    <ProjectTimeline task={selectedTask} user={user} />
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Chat System */}
+              {adminUser && (
+                <Card className="bg-slate-900/50 border-slate-700/30">
+                  <CardContent className="p-6">
+                    <ChatSystem 
+                      user={user} 
+                      adminUserId={adminUser.id}
+                      taskId={selectedTask?.id}
+                    />
+                  </CardContent>
+                </Card>
+              )}
             </div>
           )}
         </div>
