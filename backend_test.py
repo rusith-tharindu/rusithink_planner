@@ -542,6 +542,252 @@ class ProjectPlannerAPITester:
         success, _, _ = self.run_test("Get Non-existent Task (No Auth)", "GET", f"tasks/{fake_id}", 401)
         return success
 
+    # ========== FILE UPLOAD TESTS ==========
+    
+    def test_chat_file_upload_valid_file(self):
+        """Test chat file upload with valid file"""
+        if not self.admin_cookies:
+            print("❌ No admin session available for file upload test")
+            return False
+        
+        # Create a small test PDF file
+        import tempfile
+        import os
+        
+        with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as temp_file:
+            # Write minimal PDF content
+            temp_file.write(b'%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n/Pages 2 0 R\n>>\nendobj\n2 0 obj\n<<\n/Type /Pages\n/Kids [3 0 R]\n/Count 1\n>>\nendobj\n3 0 obj\n<<\n/Type /Page\n/Parent 2 0 R\n/MediaBox [0 0 612 792]\n>>\nendobj\nxref\n0 4\n0000000000 65535 f \n0000000009 00000 n \n0000000074 00000 n \n0000000120 00000 n \ntrailer\n<<\n/Size 4\n/Root 1 0 R\n>>\nstartxref\n179\n%%EOF')
+            temp_file_path = temp_file.name
+        
+        url = f"{self.api_url}/chat/upload"
+        print(f"\n🔍 Testing Chat File Upload (Valid PDF)...")
+        print(f"   URL: {url}")
+        
+        try:
+            with open(temp_file_path, 'rb') as f:
+                files = {'file': ('test.pdf', f, 'application/pdf')}
+                data = {
+                    'recipient_id': 'test-recipient-id',
+                    'content': 'Test file upload'
+                }
+                
+                response = requests.post(url, files=files, data=data, cookies=self.admin_cookies)
+                self.tests_run += 1
+                
+                if response.status_code == 200:
+                    self.tests_passed += 1
+                    print(f"✅ Passed - Status: {response.status_code}")
+                    try:
+                        response_data = response.json()
+                        print(f"   ✅ File uploaded: {response_data.get('file_name')}")
+                        print(f"   ✅ Message type: {response_data.get('message_type')}")
+                        return True
+                    except:
+                        return True
+                else:
+                    print(f"❌ Failed - Expected 200, got {response.status_code}")
+                    try:
+                        error_data = response.json()
+                        print(f"   Error: {error_data}")
+                    except:
+                        print(f"   Error: {response.text}")
+                    return False
+                    
+        except Exception as e:
+            print(f"❌ Failed - Error: {str(e)}")
+            return False
+        finally:
+            # Clean up temp file
+            try:
+                os.unlink(temp_file_path)
+            except:
+                pass
+
+    def test_chat_file_upload_invalid_format(self):
+        """Test chat file upload with invalid file format"""
+        if not self.admin_cookies:
+            print("❌ No admin session available for invalid file test")
+            return False
+        
+        # Create a test file with invalid extension
+        import tempfile
+        import os
+        
+        with tempfile.NamedTemporaryFile(suffix='.txt', delete=False) as temp_file:
+            temp_file.write(b'This is a text file which should not be allowed')
+            temp_file_path = temp_file.name
+        
+        url = f"{self.api_url}/chat/upload"
+        print(f"\n🔍 Testing Chat File Upload (Invalid Format)...")
+        print(f"   URL: {url}")
+        
+        try:
+            with open(temp_file_path, 'rb') as f:
+                files = {'file': ('test.txt', f, 'text/plain')}
+                data = {
+                    'recipient_id': 'test-recipient-id',
+                    'content': 'Test invalid file upload'
+                }
+                
+                response = requests.post(url, files=files, data=data, cookies=self.admin_cookies)
+                self.tests_run += 1
+                
+                if response.status_code == 400:
+                    self.tests_passed += 1
+                    print(f"✅ Passed - Status: {response.status_code}")
+                    try:
+                        error_data = response.json()
+                        print(f"   ✅ Correct error: {error_data.get('detail')}")
+                    except:
+                        pass
+                    return True
+                else:
+                    print(f"❌ Failed - Expected 400, got {response.status_code}")
+                    return False
+                    
+        except Exception as e:
+            print(f"❌ Failed - Error: {str(e)}")
+            return False
+        finally:
+            # Clean up temp file
+            try:
+                os.unlink(temp_file_path)
+            except:
+                pass
+
+    def test_chat_file_upload_oversized_file(self):
+        """Test chat file upload with file exceeding 16MB limit"""
+        if not self.admin_cookies:
+            print("❌ No admin session available for oversized file test")
+            return False
+        
+        # Create a large test file (simulate 17MB)
+        import tempfile
+        import os
+        
+        print(f"\n🔍 Testing Chat File Upload (Oversized File)...")
+        print("   Creating 17MB test file...")
+        
+        with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as temp_file:
+            # Write 17MB of data
+            chunk_size = 1024 * 1024  # 1MB chunks
+            for i in range(17):  # 17MB total
+                temp_file.write(b'x' * chunk_size)
+            temp_file_path = temp_file.name
+        
+        url = f"{self.api_url}/chat/upload"
+        print(f"   URL: {url}")
+        
+        try:
+            with open(temp_file_path, 'rb') as f:
+                files = {'file': ('large_test.pdf', f, 'application/pdf')}
+                data = {
+                    'recipient_id': 'test-recipient-id',
+                    'content': 'Test oversized file upload'
+                }
+                
+                response = requests.post(url, files=files, data=data, cookies=self.admin_cookies)
+                self.tests_run += 1
+                
+                if response.status_code == 400:
+                    self.tests_passed += 1
+                    print(f"✅ Passed - Status: {response.status_code}")
+                    try:
+                        error_data = response.json()
+                        print(f"   ✅ Correct error: {error_data.get('detail')}")
+                    except:
+                        pass
+                    return True
+                else:
+                    print(f"❌ Failed - Expected 400, got {response.status_code}")
+                    return False
+                    
+        except Exception as e:
+            print(f"❌ Failed - Error: {str(e)}")
+            return False
+        finally:
+            # Clean up temp file
+            try:
+                os.unlink(temp_file_path)
+            except:
+                pass
+
+    # ========== MILESTONE TESTS ==========
+    
+    def test_create_milestone(self):
+        """Test creating a project milestone"""
+        if not self.admin_cookies:
+            print("❌ No admin session available for milestone creation test")
+            return False
+        
+        if not self.created_task_id:
+            print("❌ No task ID available for milestone test")
+            return False
+        
+        milestone_data = {
+            "title": "Project Kickoff",
+            "description": "Initial project meeting and requirements gathering",
+            "due_date": (datetime.now() + timedelta(days=7)).isoformat()
+        }
+        
+        success, response, _ = self.run_test(
+            "Create Project Milestone", 
+            "POST", 
+            f"tasks/{self.created_task_id}/milestones", 
+            200,
+            data=milestone_data,
+            cookies=self.admin_cookies
+        )
+        
+        if success and 'id' in response:
+            self.milestone_id = response['id']
+            print(f"   ✅ Created milestone ID: {self.milestone_id}")
+            print(f"   ✅ Milestone title: {response.get('title')}")
+        
+        return success
+
+    def test_get_milestones(self):
+        """Test getting project milestones"""
+        if not self.admin_cookies:
+            print("❌ No admin session available for get milestones test")
+            return False
+        
+        if not self.created_task_id:
+            print("❌ No task ID available for milestones test")
+            return False
+        
+        success, response, _ = self.run_test(
+            "Get Project Milestones", 
+            "GET", 
+            f"tasks/{self.created_task_id}/milestones", 
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        if success:
+            print(f"   ✅ Retrieved {len(response)} milestones")
+            for milestone in response:
+                print(f"   - {milestone.get('title')} ({milestone.get('status')})")
+        
+        return success
+
+    def test_get_milestones_nonexistent_task(self):
+        """Test getting milestones for non-existent task"""
+        if not self.admin_cookies:
+            print("❌ No admin session available for milestone test")
+            return False
+        
+        fake_task_id = "non-existent-task-id"
+        success, response, _ = self.run_test(
+            "Get Milestones (Non-existent Task)", 
+            "GET", 
+            f"tasks/{fake_task_id}/milestones", 
+            404,
+            cookies=self.admin_cookies
+        )
+        
+        return success
+
 def main():
     print("🚀 Starting Project Planner Authentication & Authorization Tests")
     print("=" * 70)
