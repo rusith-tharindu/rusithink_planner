@@ -1435,6 +1435,7 @@ async def export_users_csv(request: Request):
                 'Last Name': user.get('last_name', ''),
                 'Phone': user.get('phone', ''),
                 'Company Name': user.get('company_name', ''),
+                'Address': user.get('address', ''),
                 'Registration Type': user.get('registration_type', 'oauth'),
                 'Role': user.get('role', 'client'),
                 'Created At': str(user.get('created_at', '')).split('T')[0] if user.get('created_at') else ''
