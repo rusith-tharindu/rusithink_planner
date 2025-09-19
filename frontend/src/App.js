@@ -16,8 +16,11 @@ import { CalendarDays, Clock, DollarSign, Plus, CheckCircle, AlertCircle, Timer,
 import { format } from "date-fns";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "https://rusithink.online";
+const BACKEND_URL = "https://rusithink.online";
 const API = `${BACKEND_URL}/api`;
+
+console.log('Backend URL:', BACKEND_URL);
+console.log('Environment variable:', process.env.REACT_APP_BACKEND_URL);
 
 // Auth Context
 const AuthContext = React.createContext();
