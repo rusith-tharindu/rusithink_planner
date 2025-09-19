@@ -845,8 +845,8 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
           {user.role === 'admin' ? 'Chat with client' : 'Chat with admin'}
         </p>
         <div className="flex items-center gap-2 mt-1">
-          <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-          <span className="text-xs text-gray-500">Real-time chat</span>
+          <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+          <span className="text-xs text-gray-500">Push notifications enabled</span>
         </div>
       </div>
 
