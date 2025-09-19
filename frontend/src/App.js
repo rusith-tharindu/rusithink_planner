@@ -2064,59 +2064,59 @@ const Dashboard = () => {
           <div className="lg:col-span-2 space-y-8">
             {/* Stats Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card className="bg-slate-900/50 border-slate-700/30">
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-blue-900/20 rounded-lg">
-                      <Clock className="w-6 h-6 text-blue-400" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold text-slate-100">{stats.total_tasks || 0}</p>
-                      <p className="text-slate-400 text-sm">Total Tasks</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-slate-900/50 border-slate-700/30">
+              <Card className="bg-gray-900/50 border-gray-700/30">
                 <CardContent className="p-6">
                   <div className="flex items-center gap-4">
                     <div className="p-3 bg-yellow-900/20 rounded-lg">
-                      <AlertCircle className="w-6 h-6 text-yellow-400" />
+                      <Clock className="w-6 h-6 text-yellow-400" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-slate-100">{stats.pending_tasks || 0}</p>
-                      <p className="text-slate-400 text-sm">Pending</p>
+                      <p className="text-2xl font-bold text-white">{stats.total_tasks || 0}</p>
+                      <p className="text-gray-400 text-sm">Total Tasks</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="bg-slate-900/50 border-slate-700/30">
+              <Card className="bg-gray-900/50 border-gray-700/30">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-blue-900/20 rounded-lg">
+                      <AlertCircle className="w-6 h-6 text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-white">{stats.pending_tasks || 0}</p>
+                      <p className="text-gray-400 text-sm">Pending</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gray-900/50 border-gray-700/30">
                 <CardContent className="p-6">
                   <div className="flex items-center gap-4">
                     <div className="p-3 bg-green-900/20 rounded-lg">
                       <CheckCircle className="w-6 h-6 text-green-400" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-slate-100">{stats.completed_tasks || 0}</p>
-                      <p className="text-slate-400 text-sm">Completed</p>
+                      <p className="text-2xl font-bold text-white">{stats.completed_tasks || 0}</p>
+                      <p className="text-gray-400 text-sm">Completed</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="bg-slate-900/50 border-slate-700/30">
+              <Card className="bg-gray-900/50 border-gray-700/30">
                 <CardContent className="p-6">
                   <div className="flex items-center gap-4">
-                    <div className="p-3 bg-emerald-900/20 rounded-lg">
-                      <DollarSign className="w-6 h-6 text-emerald-400" />
+                    <div className="p-3 bg-yellow-900/20 rounded-lg">
+                      <DollarSign className="w-6 h-6 text-yellow-400" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-slate-100">
+                      <p className="text-2xl font-bold text-white">
                         ${(stats.total_project_value || 0).toLocaleString()}
                       </p>
-                      <p className="text-slate-400 text-sm">Total Value</p>
+                      <p className="text-gray-400 text-sm">Total Value</p>
                     </div>
                   </div>
                 </CardContent>
@@ -2125,17 +2125,17 @@ const Dashboard = () => {
 
             {/* Tasks Grid */}
             <div className="space-y-6">
-              <h2 className="text-xl font-semibold text-slate-100">
+              <h2 className="text-xl font-semibold text-white">
                 {isAdmin ? 'All Tasks' : 'Your Tasks'}
               </h2>
               
               {tasks.length === 0 ? (
-                <Card className="bg-slate-900/50 border-slate-700/30">
+                <Card className="bg-gray-900/50 border-gray-700/30">
                   <CardContent className="p-12 text-center">
-                    <Clock className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-slate-300 mb-2">No tasks yet</h3>
-                    <p className="text-slate-500 mb-4">Create your first task to get started</p>
-                    <Button onClick={() => setIsDialogOpen(true)} className="bg-blue-600 hover:bg-blue-700">
+                    <Clock className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-300 mb-2">No tasks yet</h3>
+                    <p className="text-gray-500 mb-4">Create your first task to get started</p>
+                    <Button onClick={() => setIsDialogOpen(true)} className="bg-yellow-600 hover:bg-yellow-700 text-black font-semibold">
                       <Plus className="w-4 h-4 mr-2" />
                       Create Task
                     </Button>
