@@ -874,11 +874,16 @@ const AdminChatManager = ({ isVisible, onClose }) => {
     }
 
     try {
+      console.log('Starting conversation deletion for client:', clientId, clientName);
+      toast.loading('Deleting conversation...', { id: 'delete-conversation' });
+      
       const response = await axios.delete(`${API}/admin/chat/conversation/${clientId}`, { 
-        withCredentials: true 
+        withCredentials: true,
+        timeout: 15000 // 15 second timeout
       });
       
-      toast.success(response.data.message);
+      console.log('Conversation deletion response:', response.data);
+      toast.success(response.data.message || 'Conversation deleted successfully', { id: 'delete-conversation' });
       fetchConversations();
       
       // If we're currently viewing this client's chat, clear the selection
@@ -887,8 +892,14 @@ const AdminChatManager = ({ isVisible, onClose }) => {
       }
     } catch (error) {
       console.error('Error deleting conversation:', error);
-      const errorMsg = error.response?.data?.detail || 'Failed to delete conversation';
-      toast.error(errorMsg);
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        statusText: error.response?.statusText
+      });
+      const errorMsg = error.response?.data?.detail || error.message || 'Failed to delete conversation';
+      toast.error(errorMsg, { id: 'delete-conversation' });
     }
   };
 
