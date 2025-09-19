@@ -642,6 +642,268 @@ const AdminChatManager = ({ isVisible, onClose }) => {
   );
 };
 
+// Client Analytics Dashboard Component
+const ClientAnalyticsDashboard = ({ user }) => {
+  const [analytics, setAnalytics] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchClientAnalytics = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get(`${API}/analytics/client`, { withCredentials: true });
+      setAnalytics(response.data);
+    } catch (error) {
+      console.error('Error fetching client analytics:', error);
+      toast.error('Failed to load analytics');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchClientAnalytics();
+  }, []);
+
+  if (loading) {
+    return (
+      <Card className="bg-gray-900/50 border-gray-700/30">
+        <CardContent className="p-6">
+          <div className="text-center py-8">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400 mb-4"></div>
+            <p className="text-gray-400">Loading analytics...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!analytics) {
+    return (
+      <Card className="bg-gray-900/50 border-gray-700/30">
+        <CardContent className="p-6">
+          <div className="text-center py-8">
+            <p className="text-gray-400">No analytics data available</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Prepare data for monthly spending chart
+  const monthlySpendingData = Object.entries(analytics.monthly_spending || {})
+    .map(([month, amount]) => ({
+      month: format(new Date(month + '-01'), 'MMM yyyy'),
+      amount: amount,
+      monthKey: month
+    }))
+    .sort((a, b) => a.monthKey.localeCompare(b.monthKey))
+    .slice(-12); // Last 12 months
+
+  // Colors for charts
+  const COLORS = ['#facc15', '#3b82f6', '#ef4444', '#10b981'];
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-white">Your Project Statistics</h2>
+        <Button 
+          onClick={fetchClientAnalytics}
+          variant="outline"
+          size="sm"
+          className="border-gray-600 text-gray-200 hover:bg-gray-800"
+        >
+          <Download className="w-4 h-4 mr-2" />
+          Refresh
+        </Button>
+      </div>
+
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="bg-gray-900/50 border-gray-700/30">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-blue-900/20 rounded-lg">
+                <Clock className="w-6 h-6 text-blue-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-white">{analytics.total_projects}</p>
+                <p className="text-gray-400 text-sm">Total Projects</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gray-900/50 border-gray-700/30">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-green-900/20 rounded-lg">
+                <CheckCircle className="w-6 h-6 text-green-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-white">{analytics.completed_projects}</p>
+                <p className="text-gray-400 text-sm">Completed</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gray-900/50 border-gray-700/30">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-yellow-900/20 rounded-lg">
+                <DollarSign className="w-6 h-6 text-yellow-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-white">
+                  ${analytics.total_spent.toLocaleString()}
+                </p>
+                <p className="text-gray-400 text-sm">Total Spent</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gray-900/50 border-gray-700/30">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-purple-900/20 rounded-lg">
+                <Timer className="w-6 h-6 text-purple-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-white">
+                  {analytics.project_completion_rate.toFixed(1)}%
+                </p>
+                <p className="text-gray-400 text-sm">Completion Rate</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Monthly Spending Chart */}
+      <Card className="bg-gray-900/50 border-gray-700/30">
+        <CardHeader>
+          <CardTitle className="text-white">Monthly Spending Trend</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {monthlySpendingData.length > 0 ? (
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={monthlySpendingData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis 
+                    dataKey="month" 
+                    stroke="#9ca3af"
+                    fontSize={12}
+                  />
+                  <YAxis 
+                    stroke="#9ca3af"
+                    fontSize={12}
+                    tickFormatter={(value) => `$${value.toLocaleString()}`}
+                  />
+                  <Tooltip 
+                    contentStyle={{
+                      backgroundColor: '#1f2937',
+                      border: '1px solid #374151',
+                      borderRadius: '8px',
+                      color: '#ffffff'
+                    }}
+                    formatter={(value) => [`$${value.toLocaleString()}`, 'Amount']}
+                  />
+                  <Legend />
+                  <Line 
+                    type="monotone" 
+                    dataKey="amount" 
+                    stroke="#facc15" 
+                    strokeWidth={3}
+                    dot={{ fill: '#facc15', strokeWidth: 2, r: 4 }}
+                    name="Monthly Spending"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="h-80 flex items-center justify-center">
+              <p className="text-gray-400">No spending data available</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Project Status Distribution */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="bg-gray-900/50 border-gray-700/30">
+          <CardHeader>
+            <CardTitle className="text-white">Project Status Distribution</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={[
+                      { name: 'Completed', value: analytics.completed_projects, color: '#10b981' },
+                      { name: 'Pending', value: analytics.pending_projects, color: '#3b82f6' }
+                    ]}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {[
+                      { name: 'Completed', value: analytics.completed_projects, color: '#10b981' },
+                      { name: 'Pending', value: analytics.pending_projects, color: '#3b82f6' }
+                    ].map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{
+                      backgroundColor: '#1f2937',
+                      border: '1px solid #374151',
+                      borderRadius: '8px',
+                      color: '#ffffff'
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gray-900/50 border-gray-700/30">
+          <CardHeader>
+            <CardTitle className="text-white">Key Metrics</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex justify-between items-center p-4 bg-gray-800/30 rounded-lg">
+              <span className="text-gray-300">Average Project Value</span>
+              <span className="text-yellow-400 font-semibold">
+                ${analytics.average_project_value.toLocaleString()}
+              </span>
+            </div>
+            <div className="flex justify-between items-center p-4 bg-gray-800/30 rounded-lg">
+              <span className="text-gray-300">Success Rate</span>
+              <span className="text-green-400 font-semibold">
+                {analytics.project_completion_rate.toFixed(1)}%
+              </span>
+            </div>
+            <div className="flex justify-between items-center p-4 bg-gray-800/30 rounded-lg">
+              <span className="text-gray-300">Active Projects</span>
+              <span className="text-blue-400 font-semibold">
+                {analytics.pending_projects}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
 // Enhanced Chat System Component with better real-time updates
 const ChatSystem = ({ user, adminUserId, taskId = null }) => {
   const [messages, setMessages] = useState([]);
