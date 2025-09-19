@@ -771,28 +771,7 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
   useEffect(() => {
     if (recipientId) {
       fetchMessages();
-      
-      // Optimized polling with visibility API
-      const interval = setInterval(() => {
-        // Only fetch if document is visible and component is still mounted
-        if (!document.hidden && recipientId && !loading) {
-          fetchMessages();
-        }
-      }, 5000); // 5 second intervals
-      
-      // Pause/resume polling based on tab visibility
-      const handleVisibilityChange = () => {
-        if (!document.hidden && recipientId) {
-          fetchMessages(); // Fetch immediately when tab becomes active
-        }
-      };
-      
-      document.addEventListener('visibilitychange', handleVisibilityChange);
-      
-      return () => {
-        clearInterval(interval);
-        document.removeEventListener('visibilitychange', handleVisibilityChange);
-      };
+      // No more polling - messages will be fetched only when needed
     }
   }, [recipientId, taskId]);
 
