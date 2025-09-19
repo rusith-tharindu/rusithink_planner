@@ -639,6 +639,7 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
   const [uploading, setUploading] = useState(false);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
+  const lastFetchTime = useRef(0);
 
   // Determine recipient based on user role
   // For clients: recipient should be admin (adminUserId)
