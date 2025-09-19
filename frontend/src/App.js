@@ -333,6 +333,18 @@ const Login = () => {
                 </div>
 
                 <div className="space-y-2">
+                  <Label htmlFor="address" className="text-slate-200">Address</Label>
+                  <Textarea
+                    id="address"
+                    value={registerData.address}
+                    onChange={(e) => setRegisterData({...registerData, address: e.target.value})}
+                    className="bg-slate-800 border-slate-600 text-slate-100"
+                    placeholder="Enter your address (optional)"
+                    rows={3}
+                  />
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="password" className="text-slate-200">Password *</Label>
                   <Input
                     id="password"
