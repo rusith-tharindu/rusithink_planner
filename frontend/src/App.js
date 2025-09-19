@@ -270,119 +270,122 @@ const Login = () => {
                 </div>
               </>
             ) : showRegister ? (
+              // Registration form
               <form onSubmit={handleRegister} className="space-y-4">
+                <h3 className="text-xl font-semibold text-white mb-4">Create Your Account</h3>
+                
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="first_name" className="text-slate-200">First Name *</Label>
+                    <Label htmlFor="first_name" className="text-gray-200">First Name *</Label>
                     <Input
                       id="first_name"
                       type="text"
                       value={registerData.first_name}
                       onChange={(e) => setRegisterData({...registerData, first_name: e.target.value})}
-                      className="bg-slate-800 border-slate-600 text-slate-100"
+                      className="bg-gray-800 border-gray-600 text-white focus:border-yellow-500 focus:ring-yellow-500"
                       required
                     />
                   </div>
+
                   <div className="space-y-2">
-                    <Label htmlFor="last_name" className="text-slate-200">Last Name *</Label>
+                    <Label htmlFor="last_name" className="text-gray-200">Last Name *</Label>
                     <Input
                       id="last_name"
                       type="text"
                       value={registerData.last_name}
                       onChange={(e) => setRegisterData({...registerData, last_name: e.target.value})}
-                      className="bg-slate-800 border-slate-600 text-slate-100"
+                      className="bg-gray-800 border-gray-600 text-white focus:border-yellow-500 focus:ring-yellow-500"
                       required
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-slate-200">Email *</Label>
+                  <Label htmlFor="email" className="text-gray-200">Email Address *</Label>
                   <Input
                     id="email"
                     type="email"
                     value={registerData.email}
                     onChange={(e) => setRegisterData({...registerData, email: e.target.value})}
-                    className="bg-slate-800 border-slate-600 text-slate-100"
+                    className="bg-gray-800 border-gray-600 text-white focus:border-yellow-500 focus:ring-yellow-500"
                     required
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="phone" className="text-slate-200">Phone Number *</Label>
+                  <Label htmlFor="phone" className="text-gray-200">Phone Number *</Label>
                   <Input
                     id="phone"
                     type="tel"
                     value={registerData.phone}
                     onChange={(e) => setRegisterData({...registerData, phone: e.target.value})}
-                    className="bg-slate-800 border-slate-600 text-slate-100"
+                    className="bg-gray-800 border-gray-600 text-white focus:border-yellow-500 focus:ring-yellow-500"
                     required
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="company_name" className="text-slate-200">Company Name *</Label>
+                  <Label htmlFor="company_name" className="text-gray-200">Company Name *</Label>
                   <Input
                     id="company_name"
                     type="text"
                     value={registerData.company_name}
                     onChange={(e) => setRegisterData({...registerData, company_name: e.target.value})}
-                    className="bg-slate-800 border-slate-600 text-slate-100"
+                    className="bg-gray-800 border-gray-600 text-white focus:border-yellow-500 focus:ring-yellow-500"
                     required
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="address" className="text-slate-200">Address</Label>
+                  <Label htmlFor="address" className="text-gray-200">Address</Label>
                   <Textarea
                     id="address"
                     value={registerData.address}
                     onChange={(e) => setRegisterData({...registerData, address: e.target.value})}
-                    className="bg-slate-800 border-slate-600 text-slate-100"
+                    className="bg-gray-800 border-gray-600 text-white focus:border-yellow-500 focus:ring-yellow-500"
                     placeholder="Enter your address (optional)"
                     rows={3}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="password" className="text-slate-200">Password *</Label>
+                  <Label htmlFor="password" className="text-gray-200">Password *</Label>
                   <Input
                     id="password"
                     type="password"
                     value={registerData.password}
                     onChange={(e) => setRegisterData({...registerData, password: e.target.value})}
-                    className="bg-slate-800 border-slate-600 text-slate-100"
+                    className="bg-gray-800 border-gray-600 text-white focus:border-yellow-500 focus:ring-yellow-500"
                     required
                     minLength={6}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="confirmPassword" className="text-slate-200">Confirm Password *</Label>
+                  <Label htmlFor="confirmPassword" className="text-gray-200">Confirm Password *</Label>
                   <Input
                     id="confirmPassword"
                     type="password"
                     value={registerData.confirmPassword}
                     onChange={(e) => setRegisterData({...registerData, confirmPassword: e.target.value})}
-                    className="bg-slate-800 border-slate-600 text-slate-100"
+                    className="bg-gray-800 border-gray-600 text-white focus:border-yellow-500 focus:ring-yellow-500"
                     required
-                    minLength={6}
                   />
                 </div>
-                
-                <div className="flex gap-3 pt-4">
+
+                <div className="flex gap-4 pt-4">
                   <Button 
                     type="submit" 
                     disabled={loading}
-                    className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                    className="flex-1 bg-yellow-600 hover:bg-yellow-700 text-black font-semibold"
                   >
                     {loading ? 'Creating Account...' : 'Create Account'}
                   </Button>
-                  <Button
-                    type="button"
+                  <Button 
+                    type="button" 
+                    variant="outline" 
                     onClick={() => setShowRegister(false)}
-                    variant="outline"
-                    className="border-slate-600 text-slate-200"
+                    className="border-gray-600 text-gray-200 hover:bg-gray-800"
                   >
                     Back
                   </Button>
