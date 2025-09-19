@@ -313,8 +313,120 @@ class ProjectPlannerAPITester:
             print(f"   ✅ Retrieved {len(response)} users")
             for user in response[:3]:  # Show first 3 users
                 print(f"   - {user.get('name')} ({user.get('email')}) - {user.get('role')}")
+            # Store first user ID for update test
+            if response and len(response) > 0:
+                self.test_user_id = response[0].get('id')
         
         return success
+
+    def test_admin_update_user(self):
+        """Test admin endpoint to update user details"""
+        if not self.admin_cookies:
+            print("❌ No admin session available for update user test")
+            return False
+        
+        if not hasattr(self, 'test_user_id') or not self.test_user_id:
+            print("❌ No user ID available for update test")
+            return False
+        
+        update_data = {
+            "first_name": "Updated",
+            "last_name": "TestUser",
+            "phone": "+1234567890",
+            "company_name": "Updated Company Ltd"
+        }
+        
+        success, response, _ = self.run_test(
+            "Update User Details (Admin Only)", 
+            "PUT", 
+            f"admin/users/{self.test_user_id}", 
+            200,
+            data=update_data,
+            cookies=self.admin_cookies
+        )
+        
+        if success:
+            print(f"   ✅ Updated user: {response.get('name')} ({response.get('email')})")
+            print(f"   ✅ Company: {response.get('company_name')}")
+        
+        return success
+
+    def test_admin_export_users_csv(self):
+        """Test admin endpoint to export users as CSV"""
+        if not self.admin_cookies:
+            print("❌ No admin session available for CSV export test")
+            return False
+        
+        url = f"{self.api_url}/admin/users/export/csv"
+        print(f"\n🔍 Testing Admin Export Users CSV...")
+        print(f"   URL: {url}")
+        
+        try:
+            response = requests.get(url, cookies=self.admin_cookies)
+            self.tests_run += 1
+            
+            if response.status_code == 200:
+                self.tests_passed += 1
+                print(f"✅ Passed - Status: {response.status_code}")
+                print(f"   Content-Type: {response.headers.get('content-type')}")
+                print(f"   Content-Length: {len(response.content)} bytes")
+                
+                # Check if it's actually CSV content
+                if 'text/csv' in response.headers.get('content-type', ''):
+                    print("   ✅ Correct CSV content type")
+                
+                # Check for CSV headers in content
+                content = response.text[:200]
+                if 'Email' in content and 'Name' in content:
+                    print("   ✅ CSV contains expected headers")
+                
+                return True
+            else:
+                print(f"❌ Failed - Expected 200, got {response.status_code}")
+                print(f"   Error: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Failed - Error: {str(e)}")
+            return False
+
+    def test_admin_export_users_pdf(self):
+        """Test admin endpoint to export users as PDF"""
+        if not self.admin_cookies:
+            print("❌ No admin session available for PDF export test")
+            return False
+        
+        url = f"{self.api_url}/admin/users/export/pdf"
+        print(f"\n🔍 Testing Admin Export Users PDF...")
+        print(f"   URL: {url}")
+        
+        try:
+            response = requests.get(url, cookies=self.admin_cookies)
+            self.tests_run += 1
+            
+            if response.status_code == 200:
+                self.tests_passed += 1
+                print(f"✅ Passed - Status: {response.status_code}")
+                print(f"   Content-Type: {response.headers.get('content-type')}")
+                print(f"   Content-Length: {len(response.content)} bytes")
+                
+                # Check if it's actually PDF content
+                if 'application/pdf' in response.headers.get('content-type', ''):
+                    print("   ✅ Correct PDF content type")
+                
+                # Check for PDF signature
+                if response.content.startswith(b'%PDF'):
+                    print("   ✅ Valid PDF file signature")
+                
+                return True
+            else:
+                print(f"❌ Failed - Expected 200, got {response.status_code}")
+                print(f"   Error: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Failed - Error: {str(e)}")
+            return False
 
     def test_protected_routes_without_auth(self):
         """Test that protected routes require authentication"""
