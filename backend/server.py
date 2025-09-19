@@ -1504,7 +1504,7 @@ async def export_users_pdf(request: Request):
                     created_date = str(user.get('created_at', ''))[:10]
             
             # Truncate address for table display
-            address = user.get('address', '')
+            address = user.get('address', '') or ''
             if len(address) > 30:
                 address = address[:30] + '...'
             
