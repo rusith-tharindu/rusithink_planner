@@ -1228,6 +1228,110 @@ async def get_all_users(request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch users: {str(e)}")
 
+@api_router.delete("/admin/users/{user_id}")
+async def delete_user(user_id: str, request: Request):
+    """Delete a user (admin only)"""
+    await require_admin(request)
+    
+    try:
+        # Check if user exists
+        user = await db.users.find_one({"id": user_id})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        user = parse_from_mongo(user)
+        
+        # Prevent admin from deleting themselves
+        current_user = await require_auth(request)
+        if user_id == current_user.id:
+            raise HTTPException(status_code=400, detail="Cannot delete your own account")
+        
+        # Prevent deleting other admin accounts
+        if user.get("role") == "admin":
+            raise HTTPException(status_code=400, detail="Cannot delete admin accounts")
+        
+        # Delete user's tasks
+        await db.tasks.delete_many({"user_id": user_id})
+        
+        # Delete user's chat messages
+        await db.chat_messages.delete_many({
+            "$or": [
+                {"sender_id": user_id},
+                {"recipient_id": user_id}
+            ]
+        })
+        
+        # Delete the user
+        result = await db.users.delete_one({"id": user_id})
+        
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        return {"message": f"User {user.get('name', user.get('email'))} deleted successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete user: {str(e)}")
+
+@api_router.delete("/admin/users/bulk")
+async def delete_multiple_users(user_ids: List[str], request: Request):
+    """Delete multiple users (admin only)"""
+    await require_admin(request)
+    
+    try:
+        current_user = await require_auth(request)
+        deleted_count = 0
+        errors = []
+        
+        for user_id in user_ids:
+            try:
+                # Check if user exists
+                user = await db.users.find_one({"id": user_id})
+                if not user:
+                    errors.append(f"User {user_id} not found")
+                    continue
+                
+                user = parse_from_mongo(user)
+                
+                # Prevent admin from deleting themselves
+                if user_id == current_user.id:
+                    errors.append("Cannot delete your own account")
+                    continue
+                
+                # Prevent deleting other admin accounts
+                if user.get("role") == "admin":
+                    errors.append(f"Cannot delete admin account: {user.get('name', user.get('email'))}")
+                    continue
+                
+                # Delete user's tasks
+                await db.tasks.delete_many({"user_id": user_id})
+                
+                # Delete user's chat messages
+                await db.chat_messages.delete_many({
+                    "$or": [
+                        {"sender_id": user_id},
+                        {"recipient_id": user_id}
+                    ]
+                })
+                
+                # Delete the user
+                result = await db.users.delete_one({"id": user_id})
+                if result.deleted_count > 0:
+                    deleted_count += 1
+                
+            except Exception as e:
+                errors.append(f"Error deleting user {user_id}: {str(e)}")
+        
+        return {
+            "message": f"Deleted {deleted_count} user(s)",
+            "deleted_count": deleted_count,
+            "errors": errors
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete users: {str(e)}")
+
 @api_router.put("/admin/users/{user_id}", response_model=User)
 async def update_user(user_id: str, user_update: UserUpdate, request: Request):
     """Update user information (admin only)"""
