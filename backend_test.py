@@ -2923,11 +2923,15 @@ def main():
     # ANALYTICS SYSTEM TESTS (PRIMARY FOCUS)
     print("\n📊 ANALYTICS SYSTEM TESTS (PRIMARY FOCUS)")
     print("-" * 40)
-    print("Testing new analytics system for RusiThink:")
+    print("Testing analytics system date calculation fix:")
+    print("• Admin Analytics with 6, 12, and 24 month parameters")
     print("• Client Analytics Endpoints")
-    print("• Admin Analytics Endpoints with different month parameters")
     print("• Analytics Calculation Functions")
     print("• Data Persistence and Accuracy")
+    
+    # PRIMARY FOCUS: Date calculation fix verification
+    test_results.append(tester.test_analytics_date_calculation_fix_verification())
+    
     test_results.append(tester.test_client_analytics_endpoint())
     test_results.append(tester.test_client_analytics_unauthorized())
     test_results.append(tester.test_admin_analytics_endpoint())
