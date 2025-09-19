@@ -2892,6 +2892,37 @@ const Dashboard = () => {
               <ClientAnalyticsDashboard user={user} />
             )}
 
+            {/* Client Chat System - Always Available */}
+            {isClient && adminUser && (
+              <Card className="bg-gray-900/50 border-gray-700/30">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5 text-yellow-400" />
+                    Chat with Admin
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ChatSystem 
+                    user={user} 
+                    adminUserId={adminUser.id}
+                    taskId={selectedTask?.id}
+                  />
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Show loading message if adminUser is not loaded yet */}
+            {isClient && !adminUser && (
+              <Card className="bg-gray-900/50 border-gray-700/30">
+                <CardContent className="p-6">
+                  <div className="text-center py-4">
+                    <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-yellow-400 mb-2"></div>
+                    <p className="text-gray-400">Loading chat system...</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Stats Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               <Card className="bg-gray-900/50 border-gray-700/30">
