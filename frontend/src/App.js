@@ -2926,7 +2926,12 @@ const AdminUserManagement = ({ isVisible, onClose }) => {
                   {selectedUsers.size} user(s) selected
                 </span>
                 <Button 
-                  onClick={deleteSelectedUsers}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Bulk delete button clicked, selected users:', Array.from(selectedUsers));
+                    deleteSelectedUsers();
+                  }}
                   disabled={deleting}
                   className="bg-red-600 hover:bg-red-700 text-white"
                 >
