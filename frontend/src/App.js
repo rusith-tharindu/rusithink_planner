@@ -647,7 +647,11 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
   const recipientId = adminUserId;
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    // Use scrollTop instead of scrollIntoView to prevent affecting page scroll
+    const messagesContainer = messagesEndRef.current?.parentElement;
+    if (messagesContainer) {
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
   };
 
   const fetchMessages = async () => {
