@@ -638,7 +638,7 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
             ref={fileInputRef}
             onChange={handleFileUpload}
             className="hidden"
-            accept="image/*,.pdf,.doc,.docx,.txt"
+            accept=".png,.jpg,.jpeg,.pdf,.heic,.csv"
           />
           <Button
             onClick={() => fileInputRef.current?.click()}
