@@ -64,6 +64,35 @@ class UserRole(str, Enum):
     ADMIN = "admin"
     CLIENT = "client"
 
+# Analytics Models
+class ClientAnalytics(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    client_id: str
+    total_projects: int = 0
+    completed_projects: int = 0
+    pending_projects: int = 0
+    total_spent: float = 0.0
+    average_project_value: float = 0.0
+    monthly_spending: Dict[str, float] = Field(default_factory=dict)  # "YYYY-MM": amount
+    project_completion_rate: float = 0.0
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class AdminAnalytics(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    month_year: str  # Format: "YYYY-MM"
+    total_revenue: float = 0.0
+    total_projects: int = 0
+    completed_projects: int = 0
+    pending_projects: int = 0
+    new_clients: int = 0
+    active_clients: int = 0
+    average_project_value: float = 0.0
+    project_completion_rate: float = 0.0
+    revenue_by_client: Dict[str, float] = Field(default_factory=dict)  # client_id: revenue
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
 # Models
 class User(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
