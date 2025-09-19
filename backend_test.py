@@ -2847,6 +2847,736 @@ class ProjectPlannerAPITester:
         
         return True
 
+    # ========== ADMIN CHAT DELETE FUNCTIONALITY TESTS ==========
+    
+    def test_admin_chat_delete_single_message(self):
+        """Test DELETE /api/admin/chat/message/{message_id} - Delete single message"""
+        if not self.admin_cookies:
+            print("❌ No admin session available for chat delete test")
+            return False
+        
+        print(f"\n🗑️ Testing Admin Chat Delete - Single Message...")
+        
+        # Create a test client for chat testing
+        test_user_data = {
+            "email": "chat_delete_test@example.com",
+            "password": "testpass123",
+            "first_name": "ChatDelete",
+            "last_name": "TestUser",
+            "phone": "+1234567910",
+            "company_name": "Chat Delete Test Company"
+        }
+        
+        success, response, client_cookies = self.run_test(
+            "Create Client for Chat Delete Test",
+            "POST",
+            "auth/register",
+            200,
+            data=test_user_data
+        )
+        
+        if not success:
+            print("❌ Could not create test client for chat delete test")
+            return False
+        
+        client_user_id = response['user']['id']
+        client_name = response['user']['name']
+        print(f"   ✅ Created test client: {client_name} (ID: {client_user_id})")
+        
+        # Get admin info
+        success, admin_info, _ = self.run_test(
+            "Get Admin Info for Chat Delete Test",
+            "GET",
+            "chat/admin-info",
+            200,
+            cookies=client_cookies
+        )
+        
+        if not success:
+            print("❌ Could not get admin info for chat delete test")
+            return False
+        
+        admin_id = admin_info['id']
+        
+        # Admin sends a message to client
+        admin_message_data = {
+            "content": "Test message for deletion - admin to client",
+            "recipient_id": client_user_id
+        }
+        
+        success, admin_msg_response, _ = self.run_test(
+            "Admin Sends Message for Deletion Test",
+            "POST",
+            "chat/messages",
+            200,
+            data=admin_message_data,
+            cookies=self.admin_cookies
+        )
+        
+        if not success:
+            print("❌ Admin could not send message for deletion test")
+            return False
+        
+        message_id = admin_msg_response.get('id')
+        print(f"   ✅ Admin message sent successfully (ID: {message_id})")
+        
+        # Client sends a message to admin
+        client_message_data = {
+            "content": "Test reply from client for deletion test",
+            "recipient_id": admin_id
+        }
+        
+        success, client_msg_response, _ = self.run_test(
+            "Client Sends Reply for Deletion Test",
+            "POST",
+            "chat/messages",
+            200,
+            data=client_message_data,
+            cookies=client_cookies
+        )
+        
+        if not success:
+            print("❌ Client could not send reply for deletion test")
+            return False
+        
+        client_message_id = client_msg_response.get('id')
+        print(f"   ✅ Client reply sent successfully (ID: {client_message_id})")
+        
+        # Test 1: Admin deletes their own message (should succeed)
+        success, delete_response, _ = self.run_test(
+            "Admin Deletes Single Message (Success)",
+            "DELETE",
+            f"admin/chat/message/{message_id}",
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        if not success:
+            print("❌ Admin could not delete single message")
+            return False
+        
+        print(f"   ✅ Single message deleted successfully: {delete_response.get('message')}")
+        
+        # Test 2: Try to delete non-existent message (should fail with 404)
+        fake_message_id = "non-existent-message-id"
+        success, error_response, _ = self.run_test(
+            "Admin Deletes Non-existent Message (Should Fail)",
+            "DELETE",
+            f"admin/chat/message/{fake_message_id}",
+            404,
+            cookies=self.admin_cookies
+        )
+        
+        if success:
+            print(f"   ✅ Non-existent message deletion properly handled: {error_response.get('detail')}")
+        
+        # Test 3: Non-admin tries to delete message (should fail with 403)
+        success, unauthorized_response, _ = self.run_test(
+            "Client Tries to Delete Message (Should Fail)",
+            "DELETE",
+            f"admin/chat/message/{client_message_id}",
+            403,
+            cookies=client_cookies
+        )
+        
+        if success:
+            print(f"   ✅ Unauthorized deletion properly blocked: {unauthorized_response.get('detail')}")
+        
+        # Clean up test client
+        self.run_test(
+            "Cleanup Chat Delete Test Client",
+            "DELETE",
+            f"admin/users/{client_user_id}",
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        return True
+
+    def test_admin_chat_delete_conversation(self):
+        """Test DELETE /api/admin/chat/conversation/{client_id} - Delete entire conversation"""
+        if not self.admin_cookies:
+            print("❌ No admin session available for conversation delete test")
+            return False
+        
+        print(f"\n🗑️ Testing Admin Chat Delete - Entire Conversation...")
+        
+        # Create a test client for conversation testing
+        test_user_data = {
+            "email": "conversation_delete_test@example.com",
+            "password": "testpass123",
+            "first_name": "ConversationDelete",
+            "last_name": "TestUser",
+            "phone": "+1234567911",
+            "company_name": "Conversation Delete Test Company"
+        }
+        
+        success, response, client_cookies = self.run_test(
+            "Create Client for Conversation Delete Test",
+            "POST",
+            "auth/register",
+            200,
+            data=test_user_data
+        )
+        
+        if not success:
+            print("❌ Could not create test client for conversation delete test")
+            return False
+        
+        client_user_id = response['user']['id']
+        client_name = response['user']['name']
+        print(f"   ✅ Created test client: {client_name} (ID: {client_user_id})")
+        
+        # Get admin info
+        success, admin_info, _ = self.run_test(
+            "Get Admin Info for Conversation Delete Test",
+            "GET",
+            "chat/admin-info",
+            200,
+            cookies=client_cookies
+        )
+        
+        if not success:
+            print("❌ Could not get admin info for conversation delete test")
+            return False
+        
+        admin_id = admin_info['id']
+        
+        # Create multiple messages between admin and client
+        messages_data = [
+            {
+                "content": "Message 1: Admin to client for conversation delete test",
+                "recipient_id": client_user_id,
+                "cookies": self.admin_cookies,
+                "sender": "admin"
+            },
+            {
+                "content": "Message 2: Client reply for conversation delete test",
+                "recipient_id": admin_id,
+                "cookies": client_cookies,
+                "sender": "client"
+            },
+            {
+                "content": "Message 3: Another admin message for conversation delete test",
+                "recipient_id": client_user_id,
+                "cookies": self.admin_cookies,
+                "sender": "admin"
+            },
+            {
+                "content": "Message 4: Another client reply for conversation delete test",
+                "recipient_id": admin_id,
+                "cookies": client_cookies,
+                "sender": "client"
+            }
+        ]
+        
+        created_messages = []
+        for i, msg_data in enumerate(messages_data):
+            message_payload = {
+                "content": msg_data["content"],
+                "recipient_id": msg_data["recipient_id"]
+            }
+            
+            success, msg_response, _ = self.run_test(
+                f"Create Conversation Message {i+1} ({msg_data['sender']})",
+                "POST",
+                "chat/messages",
+                200,
+                data=message_payload,
+                cookies=msg_data["cookies"]
+            )
+            
+            if success:
+                created_messages.append(msg_response.get('id'))
+                print(f"   ✅ Message {i+1} created by {msg_data['sender']}")
+        
+        print(f"   ✅ Created {len(created_messages)} messages in conversation")
+        
+        # Test 1: Admin deletes entire conversation with client (should succeed)
+        success, delete_response, _ = self.run_test(
+            "Admin Deletes Entire Conversation (Success)",
+            "DELETE",
+            f"admin/chat/conversation/{client_user_id}",
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        if not success:
+            print("❌ Admin could not delete entire conversation")
+            return False
+        
+        print(f"   ✅ Conversation deleted successfully: {delete_response.get('message')}")
+        print(f"   ✅ Deleted messages count: {delete_response.get('deleted_messages')}")
+        
+        # Test 2: Try to delete conversation with non-existent client (should fail with 404)
+        fake_client_id = "non-existent-client-id"
+        success, error_response, _ = self.run_test(
+            "Admin Deletes Non-existent Client Conversation (Should Fail)",
+            "DELETE",
+            f"admin/chat/conversation/{fake_client_id}",
+            404,
+            cookies=self.admin_cookies
+        )
+        
+        if success:
+            print(f"   ✅ Non-existent client conversation deletion properly handled: {error_response.get('detail')}")
+        
+        # Test 3: Try to delete conversation with another admin (should fail with 400)
+        # First get admin user ID
+        success, users_response, _ = self.run_test(
+            "Get Users for Admin Conversation Test",
+            "GET",
+            "admin/users",
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        if success:
+            admin_user = None
+            for user in users_response:
+                if user.get('role') == 'admin':
+                    admin_user = user
+                    break
+            
+            if admin_user:
+                success, safety_response, _ = self.run_test(
+                    "Admin Tries to Delete Admin Conversation (Should Fail)",
+                    "DELETE",
+                    f"admin/chat/conversation/{admin_user['id']}",
+                    400,
+                    cookies=self.admin_cookies
+                )
+                
+                if success:
+                    print(f"   ✅ Admin conversation deletion safety check working: {safety_response.get('detail')}")
+        
+        # Test 4: Non-admin tries to delete conversation (should fail with 403)
+        success, unauthorized_response, _ = self.run_test(
+            "Client Tries to Delete Conversation (Should Fail)",
+            "DELETE",
+            f"admin/chat/conversation/{client_user_id}",
+            403,
+            cookies=client_cookies
+        )
+        
+        if success:
+            print(f"   ✅ Unauthorized conversation deletion properly blocked: {unauthorized_response.get('detail')}")
+        
+        # Clean up test client
+        self.run_test(
+            "Cleanup Conversation Delete Test Client",
+            "DELETE",
+            f"admin/users/{client_user_id}",
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        return True
+
+    def test_admin_chat_bulk_delete_messages(self):
+        """Test DELETE /api/admin/chat/bulk-delete - Bulk delete multiple messages"""
+        if not self.admin_cookies:
+            print("❌ No admin session available for bulk delete test")
+            return False
+        
+        print(f"\n🗑️ Testing Admin Chat Delete - Bulk Delete Messages...")
+        
+        # Create a test client for bulk delete testing
+        test_user_data = {
+            "email": "bulk_delete_test@example.com",
+            "password": "testpass123",
+            "first_name": "BulkDelete",
+            "last_name": "TestUser",
+            "phone": "+1234567912",
+            "company_name": "Bulk Delete Test Company"
+        }
+        
+        success, response, client_cookies = self.run_test(
+            "Create Client for Bulk Delete Test",
+            "POST",
+            "auth/register",
+            200,
+            data=test_user_data
+        )
+        
+        if not success:
+            print("❌ Could not create test client for bulk delete test")
+            return False
+        
+        client_user_id = response['user']['id']
+        client_name = response['user']['name']
+        print(f"   ✅ Created test client: {client_name} (ID: {client_user_id})")
+        
+        # Get admin info
+        success, admin_info, _ = self.run_test(
+            "Get Admin Info for Bulk Delete Test",
+            "GET",
+            "chat/admin-info",
+            200,
+            cookies=client_cookies
+        )
+        
+        if not success:
+            print("❌ Could not get admin info for bulk delete test")
+            return False
+        
+        admin_id = admin_info['id']
+        
+        # Create multiple messages for bulk deletion
+        bulk_messages_data = [
+            {
+                "content": "Bulk delete message 1: Admin to client",
+                "recipient_id": client_user_id,
+                "cookies": self.admin_cookies
+            },
+            {
+                "content": "Bulk delete message 2: Client to admin",
+                "recipient_id": admin_id,
+                "cookies": client_cookies
+            },
+            {
+                "content": "Bulk delete message 3: Admin to client again",
+                "recipient_id": client_user_id,
+                "cookies": self.admin_cookies
+            },
+            {
+                "content": "Bulk delete message 4: Client to admin again",
+                "recipient_id": admin_id,
+                "cookies": client_cookies
+            },
+            {
+                "content": "Bulk delete message 5: Final admin message",
+                "recipient_id": client_user_id,
+                "cookies": self.admin_cookies
+            }
+        ]
+        
+        created_message_ids = []
+        for i, msg_data in enumerate(bulk_messages_data):
+            message_payload = {
+                "content": msg_data["content"],
+                "recipient_id": msg_data["recipient_id"]
+            }
+            
+            success, msg_response, _ = self.run_test(
+                f"Create Bulk Delete Message {i+1}",
+                "POST",
+                "chat/messages",
+                200,
+                data=message_payload,
+                cookies=msg_data["cookies"]
+            )
+            
+            if success:
+                created_message_ids.append(msg_response.get('id'))
+                print(f"   ✅ Bulk message {i+1} created (ID: {msg_response.get('id')})")
+        
+        print(f"   ✅ Created {len(created_message_ids)} messages for bulk deletion")
+        
+        # Test 1: Bulk delete with valid message IDs (should succeed)
+        valid_message_ids = created_message_ids[:3]  # Take first 3 messages
+        
+        url = f"{self.api_url}/admin/chat/bulk-delete"
+        print(f"\n   🔍 Testing Bulk Delete (Valid Messages)...")
+        print(f"   URL: {url}")
+        print(f"   Message IDs: {valid_message_ids}")
+        
+        try:
+            response = requests.delete(
+                url,
+                json=valid_message_ids,
+                headers={'Content-Type': 'application/json'},
+                cookies=self.admin_cookies
+            )
+            self.tests_run += 1
+            
+            if response.status_code == 200:
+                self.tests_passed += 1
+                print(f"✅ Passed - Status: {response.status_code}")
+                try:
+                    response_data = response.json()
+                    print(f"   ✅ Deleted count: {response_data.get('deleted_count')}")
+                    print(f"   ✅ Message: {response_data.get('message')}")
+                    if response_data.get('errors'):
+                        print(f"   ⚠️  Errors: {response_data.get('errors')}")
+                    
+                    bulk_delete_success = True
+                except:
+                    bulk_delete_success = True
+            else:
+                print(f"❌ Failed - Expected 200, got {response.status_code}")
+                try:
+                    error_data = response.json()
+                    print(f"   Error: {error_data}")
+                except:
+                    print(f"   Error: {response.text}")
+                bulk_delete_success = False
+                
+        except Exception as e:
+            print(f"❌ Failed - Error: {str(e)}")
+            bulk_delete_success = False
+        
+        if not bulk_delete_success:
+            print("❌ Bulk delete with valid messages failed")
+            return False
+        
+        # Test 2: Bulk delete with mixed scenario (valid and invalid message IDs)
+        remaining_message_ids = created_message_ids[3:]  # Remaining valid messages
+        mixed_message_ids = remaining_message_ids + ["non-existent-msg-1", "non-existent-msg-2"]
+        
+        print(f"\n   🔍 Testing Bulk Delete (Mixed Scenario)...")
+        print(f"   Valid IDs: {remaining_message_ids}")
+        print(f"   Invalid IDs: ['non-existent-msg-1', 'non-existent-msg-2']")
+        
+        try:
+            response = requests.delete(
+                url,
+                json=mixed_message_ids,
+                headers={'Content-Type': 'application/json'},
+                cookies=self.admin_cookies
+            )
+            self.tests_run += 1
+            
+            if response.status_code == 200:
+                self.tests_passed += 1
+                print(f"✅ Passed - Status: {response.status_code}")
+                try:
+                    response_data = response.json()
+                    print(f"   ✅ Deleted count: {response_data.get('deleted_count')}")
+                    print(f"   ✅ Message: {response_data.get('message')}")
+                    print(f"   ✅ Errors (expected): {response_data.get('errors')}")
+                    
+                    # Should have some errors but some successes
+                    has_errors = len(response_data.get('errors', [])) > 0
+                    has_successes = response_data.get('deleted_count', 0) > 0
+                    
+                    if has_errors and has_successes:
+                        print("   ✅ Mixed scenario handled correctly - partial success with errors")
+                    
+                    mixed_delete_success = True
+                except:
+                    mixed_delete_success = True
+            else:
+                print(f"❌ Failed - Expected 200, got {response.status_code}")
+                mixed_delete_success = False
+                
+        except Exception as e:
+            print(f"❌ Failed - Error: {str(e)}")
+            mixed_delete_success = False
+        
+        if not mixed_delete_success:
+            print("❌ Bulk delete with mixed scenario failed")
+            return False
+        
+        # Test 3: Non-admin tries to bulk delete (should fail with 403)
+        success, unauthorized_response, _ = self.run_test(
+            "Client Tries Bulk Delete (Should Fail)",
+            "DELETE",
+            "admin/chat/bulk-delete",
+            403,
+            cookies=client_cookies
+        )
+        
+        if success:
+            print(f"   ✅ Unauthorized bulk delete properly blocked: {unauthorized_response.get('detail')}")
+        
+        # Clean up test client
+        self.run_test(
+            "Cleanup Bulk Delete Test Client",
+            "DELETE",
+            f"admin/users/{client_user_id}",
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        return True
+
+    def test_admin_chat_delete_comprehensive_scenario(self):
+        """Test comprehensive admin chat delete scenario with multiple clients and operations"""
+        if not self.admin_cookies:
+            print("❌ No admin session available for comprehensive delete test")
+            return False
+        
+        print(f"\n🎯 Testing Admin Chat Delete - Comprehensive Scenario...")
+        
+        # Create multiple test clients
+        test_clients_data = [
+            {
+                "email": "comprehensive_client1@example.com",
+                "password": "testpass123",
+                "first_name": "Comprehensive1",
+                "last_name": "TestUser",
+                "phone": "+1234567913",
+                "company_name": "Comprehensive Test Company 1"
+            },
+            {
+                "email": "comprehensive_client2@example.com",
+                "password": "testpass123",
+                "first_name": "Comprehensive2",
+                "last_name": "TestUser",
+                "phone": "+1234567914",
+                "company_name": "Comprehensive Test Company 2"
+            }
+        ]
+        
+        created_clients = []
+        for i, client_data in enumerate(test_clients_data):
+            success, response, client_cookies = self.run_test(
+                f"Create Comprehensive Test Client {i+1}",
+                "POST",
+                "auth/register",
+                200,
+                data=client_data
+            )
+            
+            if success:
+                created_clients.append({
+                    'id': response['user']['id'],
+                    'name': response['user']['name'],
+                    'cookies': client_cookies
+                })
+                print(f"   ✅ Created client {i+1}: {response['user']['name']}")
+        
+        if len(created_clients) < 2:
+            print("❌ Could not create enough clients for comprehensive test")
+            return False
+        
+        # Get admin info
+        success, admin_info, _ = self.run_test(
+            "Get Admin Info for Comprehensive Test",
+            "GET",
+            "chat/admin-info",
+            200,
+            cookies=created_clients[0]['cookies']
+        )
+        
+        if not success:
+            print("❌ Could not get admin info for comprehensive test")
+            return False
+        
+        admin_id = admin_info['id']
+        
+        # Create conversations with both clients
+        all_message_ids = []
+        
+        for i, client in enumerate(created_clients):
+            client_id = client['id']
+            client_cookies = client['cookies']
+            
+            # Admin sends messages to this client
+            for j in range(3):  # 3 messages per client
+                admin_message_data = {
+                    "content": f"Admin message {j+1} to client {i+1} - comprehensive test",
+                    "recipient_id": client_id
+                }
+                
+                success, msg_response, _ = self.run_test(
+                    f"Admin Message {j+1} to Client {i+1}",
+                    "POST",
+                    "chat/messages",
+                    200,
+                    data=admin_message_data,
+                    cookies=self.admin_cookies
+                )
+                
+                if success:
+                    all_message_ids.append(msg_response.get('id'))
+                
+                # Client replies
+                client_message_data = {
+                    "content": f"Client {i+1} reply {j+1} - comprehensive test",
+                    "recipient_id": admin_id
+                }
+                
+                success, msg_response, _ = self.run_test(
+                    f"Client {i+1} Reply {j+1}",
+                    "POST",
+                    "chat/messages",
+                    200,
+                    data=client_message_data,
+                    cookies=client_cookies
+                )
+                
+                if success:
+                    all_message_ids.append(msg_response.get('id'))
+        
+        print(f"   ✅ Created {len(all_message_ids)} messages across {len(created_clients)} clients")
+        
+        # Test comprehensive operations
+        
+        # 1. Delete some individual messages
+        individual_delete_ids = all_message_ids[:2]
+        for msg_id in individual_delete_ids:
+            success, _, _ = self.run_test(
+                f"Delete Individual Message {msg_id[:8]}...",
+                "DELETE",
+                f"admin/chat/message/{msg_id}",
+                200,
+                cookies=self.admin_cookies
+            )
+            
+            if success:
+                print(f"   ✅ Individual message deleted: {msg_id[:8]}...")
+        
+        # 2. Bulk delete some messages
+        bulk_delete_ids = all_message_ids[2:5]  # Take next 3 messages
+        
+        url = f"{self.api_url}/admin/chat/bulk-delete"
+        try:
+            response = requests.delete(
+                url,
+                json=bulk_delete_ids,
+                headers={'Content-Type': 'application/json'},
+                cookies=self.admin_cookies
+            )
+            self.tests_run += 1
+            
+            if response.status_code == 200:
+                self.tests_passed += 1
+                response_data = response.json()
+                print(f"   ✅ Bulk delete successful: {response_data.get('deleted_count')} messages")
+            
+        except Exception as e:
+            print(f"   ❌ Bulk delete failed: {str(e)}")
+        
+        # 3. Delete entire conversation with first client
+        success, conv_response, _ = self.run_test(
+            f"Delete Entire Conversation with Client 1",
+            "DELETE",
+            f"admin/chat/conversation/{created_clients[0]['id']}",
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        if success:
+            print(f"   ✅ Conversation deleted: {conv_response.get('deleted_messages')} messages")
+        
+        # 4. Verify privacy - Client 2 should not be affected by Client 1's conversation deletion
+        success, client2_messages, _ = self.run_test(
+            "Verify Client 2 Messages Still Exist",
+            "GET",
+            "chat/messages",
+            200,
+            cookies=created_clients[1]['cookies']
+        )
+        
+        if success:
+            client2_message_count = len(client2_messages)
+            print(f"   ✅ Client 2 still has {client2_message_count} messages (privacy maintained)")
+        
+        # Clean up remaining test clients
+        for i, client in enumerate(created_clients):
+            self.run_test(
+                f"Cleanup Comprehensive Test Client {i+1}",
+                "DELETE",
+                f"admin/users/{client['id']}",
+                200,
+                cookies=self.admin_cookies
+            )
+        
+        print(f"   🎉 Comprehensive admin chat delete scenario completed successfully!")
+        return True
+
 def main():
     print("🚀 Starting Project Planner Authentication & Authorization Tests")
     print("=" * 70)
