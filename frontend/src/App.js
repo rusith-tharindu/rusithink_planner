@@ -12,7 +12,7 @@ import { Textarea } from "./components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./components/ui/select";
 import { Badge } from "./components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "./components/ui/dialog";
-import { CalendarDays, Clock, DollarSign, Plus, CheckCircle, AlertCircle, Timer, Trash2, LogOut, User, Shield, Users, MessageSquare, Bell, Send, Eye, Download, Edit2, Save, X, Upload, Image as ImageIcon, FileText, Paperclip } from "lucide-react";
+import { CalendarDays, Clock, DollarSign, Plus, CheckCircle, AlertCircle, Timer, Trash2, LogOut, User, Shield, Users, MessageSquare, Bell, Send, Eye, Download, Edit2, Save, X, Upload, Image as ImageIcon, FileText, Paperclip, Edit, Check } from "lucide-react";
 import { format } from "date-fns";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
