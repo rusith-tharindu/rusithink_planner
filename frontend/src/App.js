@@ -673,22 +673,27 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
   };
 
   const sendMessage = async () => {
-    if (!newMessage.trim() || !recipientId) return;
+    if (!newMessage.trim() || !recipientId || loading) return;
 
+    const messageToSend = newMessage.trim();
+    setNewMessage(''); // Clear input immediately for better UX
+    
     try {
       const messageData = {
-        content: newMessage,
+        content: messageToSend,
         recipient_id: recipientId,
         task_id: taskId
       };
 
       await axios.post(`${API}/chat/messages`, messageData, { withCredentials: true });
-      setNewMessage('');
-      fetchMessages(); // Refresh messages immediately
-      toast.success('Message sent');
+      // Don't show success toast for every message to avoid spam
+      // Fetch messages immediately without waiting for polling
+      fetchMessages();
     } catch (error) {
       console.error('Error sending message:', error);
       toast.error('Failed to send message');
+      // Restore message if failed
+      setNewMessage(messageToSend);
     }
   };
 
