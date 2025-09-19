@@ -1251,7 +1251,7 @@ async def delete_user(user_id: str, request: Request):
             raise HTTPException(status_code=400, detail="Cannot delete admin accounts")
         
         # Delete user's tasks
-        await db.tasks.delete_many({"user_id": user_id})
+        await db.tasks.delete_many({"created_by": user_id})
         
         # Delete user's chat messages
         await db.chat_messages.delete_many({
