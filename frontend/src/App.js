@@ -717,24 +717,6 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
     }
   };
 
-  // Add notification trigger function
-  const triggerChatNotification = (message) => {
-    // Show browser notification if permission granted
-    if (Notification.permission === 'granted') {
-      new Notification(`New message from ${message.sender_name}`, {
-        body: message.content.substring(0, 100),
-        icon: '/favicon.ico',
-        tag: 'chat-message'
-      });
-    }
-    
-    // Show toast notification
-    toast.success(`💬 New message from ${message.sender_name}`, {
-      duration: 4000,
-      position: 'top-right',
-    });
-  };
-
   const sendMessage = async () => {
     if (!newMessage.trim() || !recipientId || loading) return;
 
@@ -751,15 +733,12 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
 
       const response = await axios.post(`${API}/chat/messages`, messageData, { withCredentials: true });
       
-      // Fetch messages immediately and trigger notification for recipient
-      fetchMessages();
+      // Immediately fetch messages to update conversation and show sent message
+      setTimeout(() => {
+        fetchMessages();
+      }, 500); // Small delay to ensure backend has processed the message
       
-      // Trigger notification system for the recipient (simulated push notification)
-      // In a real-world scenario, this would be handled by the backend via WebSocket or Push API
-      triggerChatNotification({
-        sender_name: user.name || 'User',
-        content: messageToSend
-      });
+      console.log('Message sent successfully:', response.data);
       
     } catch (error) {
       console.error('Error sending message:', error);
