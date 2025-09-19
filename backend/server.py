@@ -1305,7 +1305,7 @@ async def delete_multiple_users(user_ids: List[str], request: Request):
                     continue
                 
                 # Delete user's tasks
-                await db.tasks.delete_many({"user_id": user_id})
+                await db.tasks.delete_many({"created_by": user_id})
                 
                 # Delete user's chat messages
                 await db.chat_messages.delete_many({
