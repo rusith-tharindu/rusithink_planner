@@ -1585,6 +1585,7 @@ const Dashboard = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [adminUser, setAdminUser] = useState(null);
   const [selectedTask, setSelectedTask] = useState(null);
+  const [showUserManagement, setShowUserManagement] = useState(false);
 
   const isAdmin = user?.role === 'admin';
   const isClient = user?.role === 'client';
