@@ -1293,14 +1293,14 @@ const TaskCard = ({ task, onStatusUpdate, onDelete, isAdmin }) => {
 
   return (
     <>
-      <Card className="bg-slate-900/50 border-slate-700/30 hover:bg-slate-900/70 transition-all duration-200">
+      <Card className="bg-gray-900/50 border-gray-700/30 hover:bg-gray-900/70 transition-all duration-200">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
             <div className="space-y-2">
-              <CardTitle className="text-slate-100 text-lg flex items-center gap-2">
+              <CardTitle className="text-white text-lg flex items-center gap-2">
                 {task.title}
                 {task.unread_updates > 0 && (
-                  <Badge className="bg-orange-900/20 text-orange-400 border-orange-700/30 text-xs">
+                  <Badge className="bg-yellow-900/20 text-yellow-400 border-yellow-700/30 text-xs">
                     {task.unread_updates} New Update{task.unread_updates > 1 ? 's' : ''}
                   </Badge>
                 )}
@@ -1324,7 +1324,7 @@ const TaskCard = ({ task, onStatusUpdate, onDelete, isAdmin }) => {
                 size="sm"
                 variant="ghost"
                 onClick={() => setUpdatesDialogOpen(true)}
-                className="text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
+                className="text-yellow-400 hover:text-yellow-300 hover:bg-yellow-900/20"
                 title={isAdmin ? "Add project update" : "View project updates"}
               >
                 <MessageSquare className="w-4 h-4" />
@@ -1353,18 +1353,18 @@ const TaskCard = ({ task, onStatusUpdate, onDelete, isAdmin }) => {
         
         <CardContent className="space-y-4">
           {task.description && (
-            <p className="text-slate-300 text-sm leading-relaxed">{task.description}</p>
+            <p className="text-gray-300 text-sm leading-relaxed">{task.description}</p>
           )}
           
-          <div className="flex items-center gap-4 text-sm text-slate-400 flex-wrap">
+          <div className="flex items-center gap-4 text-sm text-gray-400 flex-wrap">
             <div className="flex items-center gap-2">
               <CalendarDays className="w-4 h-4" />
               <span>{format(new Date(task.due_datetime), 'PPp')}</span>
             </div>
             {task.project_price && (
               <div className="flex items-center gap-2">
-                <DollarSign className="w-4 h-4" />
-                <span>${task.project_price.toLocaleString()}</span>
+                <DollarSign className="w-4 h-4 text-yellow-400" />
+                <span className="text-yellow-400 font-semibold">${task.project_price.toLocaleString()}</span>
               </div>
             )}
           </div>
