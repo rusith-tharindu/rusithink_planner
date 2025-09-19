@@ -654,9 +654,13 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
       if (taskId) params.append('task_id', taskId);
       // Both admin and client use the same logic - fetch messages between them
       
+      console.log('Fetching messages for user:', user.role, 'recipient:', recipientId, 'taskId:', taskId);
+      
       const response = await axios.get(`${API}/chat/messages${params.toString() ? `?${params}` : ''}`, { 
         withCredentials: true 
       });
+      
+      console.log('Messages received:', response.data.length);
       setMessages(response.data);
     } catch (error) {
       console.error('Error fetching messages:', error);
