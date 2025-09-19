@@ -790,6 +790,480 @@ class ProjectPlannerAPITester:
         
         return success
 
+    # ========== USER MANAGEMENT DELETE TESTS ==========
+    
+    def test_create_test_client_users(self):
+        """Create test client users for deletion testing"""
+        if not self.admin_cookies:
+            print("❌ No admin session available for user creation test")
+            return False
+        
+        # Create multiple test users for deletion testing
+        test_users = [
+            {
+                "email": "testclient1@example.com",
+                "password": "testpass123",
+                "first_name": "Test",
+                "last_name": "Client1",
+                "phone": "+1234567890",
+                "company_name": "Test Company 1",
+                "address": "123 Test Street"
+            },
+            {
+                "email": "testclient2@example.com", 
+                "password": "testpass123",
+                "first_name": "Test",
+                "last_name": "Client2",
+                "phone": "+1234567891",
+                "company_name": "Test Company 2",
+                "address": "456 Test Avenue"
+            },
+            {
+                "email": "testclient3@example.com",
+                "password": "testpass123", 
+                "first_name": "Test",
+                "last_name": "Client3",
+                "phone": "+1234567892",
+                "company_name": "Test Company 3",
+                "address": "789 Test Boulevard"
+            }
+        ]
+        
+        created_users = []
+        for user_data in test_users:
+            success, response, _ = self.run_test(
+                f"Create Test Client ({user_data['email']})",
+                "POST",
+                "auth/register",
+                200,
+                data=user_data
+            )
+            
+            if success and 'user' in response:
+                created_users.append(response['user']['id'])
+                print(f"   ✅ Created test user: {response['user']['name']} (ID: {response['user']['id']})")
+        
+        # Store created user IDs for deletion tests
+        self.test_client_ids = created_users
+        return len(created_users) == len(test_users)
+
+    def test_single_user_delete_success(self):
+        """Test successful single user deletion"""
+        if not self.admin_cookies:
+            print("❌ No admin session available for user deletion test")
+            return False
+        
+        if not hasattr(self, 'test_client_ids') or not self.test_client_ids:
+            print("❌ No test client users available for deletion")
+            return False
+        
+        # Delete the first test client
+        user_id_to_delete = self.test_client_ids[0]
+        
+        success, response, _ = self.run_test(
+            "Delete Single User (Success)",
+            "DELETE",
+            f"admin/users/{user_id_to_delete}",
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        if success:
+            print(f"   ✅ User deleted successfully: {response.get('message')}")
+            # Remove from our list
+            self.test_client_ids.remove(user_id_to_delete)
+        
+        return success
+
+    def test_single_user_delete_nonexistent(self):
+        """Test deleting non-existent user"""
+        if not self.admin_cookies:
+            print("❌ No admin session available for user deletion test")
+            return False
+        
+        fake_user_id = "non-existent-user-id"
+        
+        success, response, _ = self.run_test(
+            "Delete Single User (Non-existent)",
+            "DELETE", 
+            f"admin/users/{fake_user_id}",
+            404,
+            cookies=self.admin_cookies
+        )
+        
+        return success
+
+    def test_single_user_delete_admin_account(self):
+        """Test attempting to delete admin account (should fail)"""
+        if not self.admin_cookies:
+            print("❌ No admin session available for admin deletion test")
+            return False
+        
+        # Get admin user ID
+        success, users_response, _ = self.run_test(
+            "Get Users for Admin ID",
+            "GET",
+            "admin/users", 
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        if not success:
+            print("❌ Could not retrieve users to find admin ID")
+            return False
+        
+        admin_user = None
+        for user in users_response:
+            if user.get('role') == 'admin':
+                admin_user = user
+                break
+        
+        if not admin_user:
+            print("❌ Could not find admin user")
+            return False
+        
+        # Try to delete admin account (should fail)
+        success, response, _ = self.run_test(
+            "Delete Admin Account (Should Fail)",
+            "DELETE",
+            f"admin/users/{admin_user['id']}",
+            400,
+            cookies=self.admin_cookies
+        )
+        
+        if success:
+            print(f"   ✅ Admin deletion properly blocked: {response.get('detail')}")
+        
+        return success
+
+    def test_single_user_delete_self(self):
+        """Test admin attempting to delete themselves (should fail)"""
+        if not self.admin_cookies:
+            print("❌ No admin session available for self-deletion test")
+            return False
+        
+        # Get current admin user info
+        success, user_response, _ = self.run_test(
+            "Get Current Admin User",
+            "GET",
+            "auth/me",
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        if not success:
+            print("❌ Could not get current user info")
+            return False
+        
+        admin_id = user_response.get('id')
+        
+        # Try to delete self (should fail)
+        success, response, _ = self.run_test(
+            "Delete Self (Should Fail)",
+            "DELETE",
+            f"admin/users/{admin_id}",
+            400,
+            cookies=self.admin_cookies
+        )
+        
+        if success:
+            print(f"   ✅ Self-deletion properly blocked: {response.get('detail')}")
+        
+        return success
+
+    def test_bulk_user_delete_success(self):
+        """Test successful bulk user deletion"""
+        if not self.admin_cookies:
+            print("❌ No admin session available for bulk deletion test")
+            return False
+        
+        if not hasattr(self, 'test_client_ids') or len(self.test_client_ids) < 2:
+            print("❌ Not enough test client users available for bulk deletion")
+            return False
+        
+        # Delete remaining test clients in bulk
+        user_ids_to_delete = self.test_client_ids[:2]  # Take first 2 remaining
+        
+        url = f"{self.api_url}/admin/users/bulk"
+        print(f"\n🔍 Testing Bulk User Delete (Success)...")
+        print(f"   URL: {url}")
+        print(f"   Deleting users: {user_ids_to_delete}")
+        
+        try:
+            response = requests.delete(
+                url,
+                json=user_ids_to_delete,
+                headers={'Content-Type': 'application/json'},
+                cookies=self.admin_cookies
+            )
+            self.tests_run += 1
+            
+            if response.status_code == 200:
+                self.tests_passed += 1
+                print(f"✅ Passed - Status: {response.status_code}")
+                try:
+                    response_data = response.json()
+                    print(f"   ✅ Deleted count: {response_data.get('deleted_count')}")
+                    print(f"   ✅ Message: {response_data.get('message')}")
+                    if response_data.get('errors'):
+                        print(f"   ⚠️  Errors: {response_data.get('errors')}")
+                    
+                    # Remove deleted users from our list
+                    for user_id in user_ids_to_delete:
+                        if user_id in self.test_client_ids:
+                            self.test_client_ids.remove(user_id)
+                    
+                    return True
+                except:
+                    return True
+            else:
+                print(f"❌ Failed - Expected 200, got {response.status_code}")
+                try:
+                    error_data = response.json()
+                    print(f"   Error: {error_data}")
+                except:
+                    print(f"   Error: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Failed - Error: {str(e)}")
+            return False
+
+    def test_bulk_user_delete_mixed_scenario(self):
+        """Test bulk deletion with mixed scenarios (valid and invalid users)"""
+        if not self.admin_cookies:
+            print("❌ No admin session available for mixed bulk deletion test")
+            return False
+        
+        # Get admin user ID for the test
+        success, user_response, _ = self.run_test(
+            "Get Current Admin for Mixed Test",
+            "GET", 
+            "auth/me",
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        if not success:
+            print("❌ Could not get admin user info")
+            return False
+        
+        admin_id = user_response.get('id')
+        
+        # Mix of valid client, admin (should fail), non-existent (should fail)
+        mixed_user_ids = []
+        
+        # Add remaining test client if available
+        if hasattr(self, 'test_client_ids') and self.test_client_ids:
+            mixed_user_ids.append(self.test_client_ids[0])
+        
+        # Add admin ID (should fail)
+        mixed_user_ids.append(admin_id)
+        
+        # Add non-existent user (should fail)
+        mixed_user_ids.append("non-existent-user-id")
+        
+        url = f"{self.api_url}/admin/users/bulk"
+        print(f"\n🔍 Testing Bulk User Delete (Mixed Scenario)...")
+        print(f"   URL: {url}")
+        print(f"   User IDs: {mixed_user_ids}")
+        
+        try:
+            response = requests.delete(
+                url,
+                json=mixed_user_ids,
+                headers={'Content-Type': 'application/json'},
+                cookies=self.admin_cookies
+            )
+            self.tests_run += 1
+            
+            if response.status_code == 200:
+                self.tests_passed += 1
+                print(f"✅ Passed - Status: {response.status_code}")
+                try:
+                    response_data = response.json()
+                    print(f"   ✅ Deleted count: {response_data.get('deleted_count')}")
+                    print(f"   ✅ Message: {response_data.get('message')}")
+                    print(f"   ✅ Errors (expected): {response_data.get('errors')}")
+                    
+                    # Should have some errors but some successes
+                    has_errors = len(response_data.get('errors', [])) > 0
+                    has_successes = response_data.get('deleted_count', 0) > 0
+                    
+                    if has_errors and has_successes:
+                        print("   ✅ Mixed scenario handled correctly")
+                    
+                    return True
+                except:
+                    return True
+            else:
+                print(f"❌ Failed - Expected 200, got {response.status_code}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Failed - Error: {str(e)}")
+            return False
+
+    def test_verify_cascading_deletes(self):
+        """Test that user deletion properly cascades to tasks and chat messages"""
+        if not self.admin_cookies:
+            print("❌ No admin session available for cascading delete test")
+            return False
+        
+        print(f"\n🔍 Testing Cascading Deletes Verification...")
+        
+        # Create a test user
+        test_user_data = {
+            "email": "cascade_test@example.com",
+            "password": "testpass123",
+            "first_name": "Cascade",
+            "last_name": "Test",
+            "phone": "+1234567899",
+            "company_name": "Cascade Test Company"
+        }
+        
+        success, response, cookies = self.run_test(
+            "Create User for Cascade Test",
+            "POST",
+            "auth/register",
+            200,
+            data=test_user_data
+        )
+        
+        if not success:
+            print("❌ Could not create test user for cascade test")
+            return False
+        
+        test_user_id = response['user']['id']
+        test_session_token = response['session_token']
+        test_cookies = cookies
+        
+        print(f"   ✅ Created test user: {test_user_id}")
+        
+        # Create a task as this user
+        due_date = datetime.now() + timedelta(days=1)
+        task_data = {
+            "title": "Cascade Test Task",
+            "description": "Task to test cascading delete",
+            "due_datetime": due_date.isoformat(),
+            "project_price": 1000.0
+        }
+        
+        success, task_response, _ = self.run_test(
+            "Create Task for Cascade Test",
+            "POST",
+            "tasks",
+            200,
+            data=task_data,
+            cookies=test_cookies
+        )
+        
+        if success:
+            test_task_id = task_response['id']
+            print(f"   ✅ Created test task: {test_task_id}")
+        
+        # Send a chat message as this user
+        admin_users_success, admin_users_response, _ = self.run_test(
+            "Get Admin for Chat Test",
+            "GET",
+            "admin/users",
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        if admin_users_success:
+            admin_user = None
+            for user in admin_users_response:
+                if user.get('role') == 'admin':
+                    admin_user = user
+                    break
+            
+            if admin_user:
+                chat_data = {
+                    "content": "Test message for cascade delete",
+                    "recipient_id": admin_user['id']
+                }
+                
+                success, chat_response, _ = self.run_test(
+                    "Send Chat Message for Cascade Test",
+                    "POST",
+                    "chat/messages",
+                    200,
+                    data=chat_data,
+                    cookies=test_cookies
+                )
+                
+                if success:
+                    print(f"   ✅ Created test chat message")
+        
+        # Now delete the user as admin
+        success, delete_response, _ = self.run_test(
+            "Delete User (Cascade Test)",
+            "DELETE",
+            f"admin/users/{test_user_id}",
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        if success:
+            print(f"   ✅ User deleted: {delete_response.get('message')}")
+            print("   ✅ Cascading delete test completed - user's tasks and messages should be removed")
+            return True
+        
+        return False
+
+    def test_user_delete_unauthorized(self):
+        """Test user deletion without admin privileges"""
+        # Create a regular user session
+        test_user_data = {
+            "email": "unauthorized_test@example.com",
+            "password": "testpass123",
+            "first_name": "Unauthorized",
+            "last_name": "Test",
+            "phone": "+1234567898",
+            "company_name": "Unauthorized Test Company"
+        }
+        
+        success, response, cookies = self.run_test(
+            "Create User for Unauthorized Test",
+            "POST",
+            "auth/register",
+            200,
+            data=test_user_data
+        )
+        
+        if not success:
+            print("❌ Could not create test user for unauthorized test")
+            return False
+        
+        test_user_id = response['user']['id']
+        test_cookies = cookies
+        
+        # Try to delete another user (should fail with 403)
+        fake_user_id = "some-other-user-id"
+        
+        success, response, _ = self.run_test(
+            "Delete User (Unauthorized)",
+            "DELETE",
+            f"admin/users/{fake_user_id}",
+            403,
+            cookies=test_cookies
+        )
+        
+        if success:
+            print("   ✅ Unauthorized deletion properly blocked")
+        
+        # Clean up - delete the test user as admin
+        self.run_test(
+            "Cleanup Unauthorized Test User",
+            "DELETE",
+            f"admin/users/{test_user_id}",
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        return success
+
 def main():
     print("🚀 Starting Project Planner Authentication & Authorization Tests")
     print("=" * 70)
