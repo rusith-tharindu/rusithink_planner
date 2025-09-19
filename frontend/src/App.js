@@ -2719,49 +2719,83 @@ const AdminUserManagement = ({ isVisible, onClose }) => {
 
   const exportCSV = async () => {
     try {
+      console.log('Starting CSV export...');
+      toast.loading('Exporting CSV...', { id: 'csv-export' });
+      
       const response = await axios.get(`${API}/admin/users/export/csv`, { 
         withCredentials: true,
-        responseType: 'blob'
+        responseType: 'blob',
+        timeout: 30000 // 30 second timeout
       });
       
-      const blob = new Blob([response.data], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'users_export.csv';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      console.log('CSV export response received:', response.status, response.headers);
       
-      toast.success('CSV export downloaded successfully!');
+      if (response.data && response.data.size > 0) {
+        const blob = new Blob([response.data], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `users_export_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        
+        toast.success('CSV export downloaded successfully!', { id: 'csv-export' });
+        console.log('CSV file downloaded successfully');
+      } else {
+        throw new Error('Empty response from server');
+      }
     } catch (error) {
       console.error('Error exporting CSV:', error);
-      toast.error('Failed to export CSV');
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        statusText: error.response?.statusText
+      });
+      toast.error(`Failed to export CSV: ${error.response?.data?.detail || error.message}`, { id: 'csv-export' });
     }
   };
 
   const exportPDF = async () => {
     try {
+      console.log('Starting PDF export...');
+      toast.loading('Exporting PDF...', { id: 'pdf-export' });
+      
       const response = await axios.get(`${API}/admin/users/export/pdf`, { 
         withCredentials: true,
-        responseType: 'blob'
+        responseType: 'blob',
+        timeout: 30000 // 30 second timeout
       });
       
-      const blob = new Blob([response.data], { type: 'application/pdf' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'users_export.pdf';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      console.log('PDF export response received:', response.status, response.headers);
       
-      toast.success('PDF export downloaded successfully!');
+      if (response.data && response.data.size > 0) {
+        const blob = new Blob([response.data], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `users_export_${new Date().toISOString().split('T')[0]}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        
+        toast.success('PDF export downloaded successfully!', { id: 'pdf-export' });
+        console.log('PDF file downloaded successfully');
+      } else {
+        throw new Error('Empty response from server');
+      }
     } catch (error) {
       console.error('Error exporting PDF:', error);
-      toast.error('Failed to export PDF');
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        statusText: error.response?.statusText
+      });
+      toast.error(`Failed to export PDF: ${error.response?.data?.detail || error.message}`, { id: 'pdf-export' });
     }
   };
 
