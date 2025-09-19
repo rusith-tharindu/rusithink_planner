@@ -692,12 +692,21 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
       const params = new URLSearchParams();
       if (taskId) params.append('task_id', taskId);
       
+      // For admin in chat manager, pass client_id parameter
+      if (user.role === 'admin' && recipientId) {
+        params.append('client_id', recipientId);
+      }
+      
       const response = await axios.get(`${API}/chat/messages${params.toString() ? `?${params}` : ''}`, { 
         withCredentials: true,
-        timeout: 5000 // Add timeout to prevent hanging requests
+        timeout: 10000 // Increased timeout for better reliability
       });
       
-      setMessages(response.data);
+      // Always preserve existing messages and update with fresh data
+      const newMessages = response.data || [];
+      console.log(`Fetched ${newMessages.length} messages for conversation`);
+      setMessages(newMessages);
+      
     } catch (error) {
       // Only log errors that aren't network timeouts to reduce console spam
       if (error.code !== 'ECONNABORTED') {
