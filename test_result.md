@@ -457,7 +457,7 @@ frontend:
     implemented: true
     working: false
     file: "App.js, .env, build process"
-    stuck_count: 3
+    stuck_count: 4
     priority: "critical"
     needs_retesting: false
     status_history:
@@ -470,6 +470,9 @@ frontend:
       - working: false
         agent: "testing"
         comment: "🚨 ULTIMATE AUTHENTICATION VERIFICATION FAILED! Final comprehensive testing on https://rusithink.online confirms the CRITICAL ISSUE PERSISTS despite multiple fix attempts. DEVASTATING RESULTS: ❌ Console Verification: NO 'Backend URL: https://rusithink.online' message found - indicates deployed bundle still contains old configuration ❌ Admin Login: COMPLETE FAILURE - credentials 'rusithink/20200104Rh' rejected due to CORS errors ❌ Network Analysis: 100% API calls going to OLD DOMAIN (https://rusithink-planner.emergent.host/api/auth/admin-login) ❌ CORS Errors: 2 CORS errors detected blocking all authentication ❌ Registration: Sign Up button not found/not working ✅ OAuth: Google sign-in button present and would redirect correctly. CRITICAL STATISTICS: 0/6 success criteria met, 1/6 tests passed (16.7% success rate). ROOT CAUSE CONFIRMED: The deployed JavaScript bundle at https://rusithink.online is NOT the latest build - it still contains the old domain URLs despite source code showing correct hardcoded values. This is a DEPLOYMENT/BUILD CACHE issue, not a code issue. IMMEDIATE ACTION REQUIRED: Complete frontend rebuild and redeployment with cache clearing to deploy the correct version with https://rusithink.online URLs."
+      - working: false
+        agent: "testing"
+        comment: "🚨 DEFINITIVE CUSTOM DOMAIN AUTHENTICATION TEST FAILED! Comprehensive testing on https://rusithink.online confirms the CRITICAL BACKEND URL ISSUE REMAINS UNRESOLVED. DETAILED FINDINGS: ❌ ADMIN LOGIN: Credentials 'rusithink/20200104Rh' fail - API calls go to https://rusithink-planner.emergent.host/api/auth/admin-login instead of https://rusithink.online/api/auth/admin-login ❌ REGISTRATION: Complete form with address field renders correctly but would fail on submission due to wrong API endpoint ❌ NETWORK ANALYSIS: 4 API requests detected, ALL going to old domain (rusithink-planner.emergent.host), ZERO requests to correct domain (rusithink.online) ✅ UI ELEMENTS: All authentication forms render perfectly with address field included ✅ OAUTH REDIRECT: Google OAuth button correctly redirects to auth.emergentagent.com with https://rusithink.online in redirect URL ❌ CRITICAL STATISTICS: 2/6 success criteria met (33.3% success rate). ROOT CAUSE CONFIRMED: The deployed JavaScript bundle at https://rusithink.online contains hardcoded references to the old domain despite source code showing correct environment variable usage. This is definitively a BUILD/DEPLOYMENT issue where the environment variable REACT_APP_BACKEND_URL=https://rusithink.online is not being properly injected into the production build. IMMEDIATE ACTION REQUIRED: Complete frontend rebuild with proper environment variable injection and cache-cleared redeployment."
 
 metadata:
   created_by: "main_agent"
