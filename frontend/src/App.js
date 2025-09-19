@@ -787,9 +787,13 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
   }, [recipientId, taskId]);
 
   useEffect(() => {
-    // Only scroll to bottom if not loading to avoid interrupting user interactions
+    // Only scroll to bottom if not loading and we actually have messages
+    // Also add a small delay to ensure DOM is fully rendered
     if (!loading && messages.length > 0) {
-      scrollToBottom();
+      const timeoutId = setTimeout(() => {
+        scrollToBottom();
+      }, 100);
+      return () => clearTimeout(timeoutId);
     }
   }, [messages, loading]);
 
