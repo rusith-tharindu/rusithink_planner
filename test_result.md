@@ -179,6 +179,18 @@ backend:
         agent: "testing"
         comment: "✅ Enhanced chat messages endpoint with client_id parameter working perfectly. Admin users can specify client_id parameter to view conversation with specific client. Privacy controls verified - non-admin users cannot access other clients' messages even with client_id parameter. Message filtering properly implemented - all returned messages involve only the requesting user or specified client (for admin). Complete message privacy maintained between different clients."
 
+  - task: "Chat System Notification Fix"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "🎉 CRITICAL NOTIFICATION FIX VERIFIED! The reported issue 'When admin sends a reply client gets a notification but can't view' has been successfully resolved. Comprehensive testing shows: 1) New Admin Info Endpoint (GET /api/chat/admin-info) working correctly - clients can retrieve admin information for chat. 2) Complete Chat Message Flow tested - Admin sends message to client ✅, Client fetches and views admin messages ✅, Client sends reply ✅, Admin fetches client replies ✅. 3) Message Filtering working properly - privacy maintained between clients, admin can use client_id parameter. 4) Notification System operational - unread counts increment/decrement correctly. 5) MAIN ISSUE RESOLVED - Clients can now properly view admin messages after receiving notifications. All 15 specialized chat system tests passed (100% success rate). The notification visibility bug is completely fixed."
+
   - task: "Project Milestones API"
     implemented: true
     working: true
