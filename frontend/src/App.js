@@ -1254,7 +1254,10 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
   };
 
   const fetchMessages = async () => {
-    if (!recipientId) return;
+    if (!recipientId) {
+      console.log('fetchMessages: No recipientId, skipping');
+      return;
+    }
     
     // Debounce rapid successive calls (minimum 1 second between fetches)
     const now = Date.now();
@@ -1276,14 +1279,24 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
         params.append('client_id', recipientId);
       }
       
-      const response = await axios.get(`${API}/chat/messages${params.toString() ? `?${params}` : ''}`, { 
+      const url = `${API}/chat/messages${params.toString() ? `?${params}` : ''}`;
+      console.log(`fetchMessages: ${user.role} fetching from: ${url}`);
+      console.log(`fetchMessages: user.id=${user.id}, recipientId=${recipientId}`);
+      
+      const response = await axios.get(url, { 
         withCredentials: true,
         timeout: 10000 // Increased timeout for better reliability
       });
       
       // Always preserve existing messages and update with fresh data
       const newMessages = response.data || [];
-      console.log(`Fetched ${newMessages.length} messages for conversation`);
+      console.log(`fetchMessages: Fetched ${newMessages.length} messages for ${user.role}`);
+      
+      // Log message details for debugging
+      newMessages.forEach((msg, index) => {
+        console.log(`  Message ${index + 1}: From ${msg.sender_name} (${msg.sender_role}) - "${msg.content.substring(0, 50)}..."`);
+      });
+      
       setMessages(newMessages);
       
     } catch (error) {
