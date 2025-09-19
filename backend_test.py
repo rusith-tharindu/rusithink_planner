@@ -3644,6 +3644,18 @@ def main():
     test_results.append(tester.test_chat_message_history_continuity_fix())
     test_results.append(tester.test_role_based_message_filtering())
     
+    # ADMIN CHAT DELETE FUNCTIONALITY TESTS (PRIMARY FOCUS)
+    print("\n🗑️ ADMIN CHAT DELETE FUNCTIONALITY TESTS (PRIMARY FOCUS)")
+    print("-" * 60)
+    print("Testing new admin chat delete features:")
+    print("• DELETE /api/admin/chat/message/{message_id} - Delete single message")
+    print("• DELETE /api/admin/chat/conversation/{client_id} - Delete conversation")
+    print("• DELETE /api/admin/chat/bulk-delete - Bulk delete messages")
+    test_results.append(tester.test_admin_chat_delete_single_message())
+    test_results.append(tester.test_admin_chat_delete_conversation())
+    test_results.append(tester.test_admin_chat_bulk_delete_messages())
+    test_results.append(tester.test_admin_chat_delete_comprehensive_scenario())
+
     # CHAT SYSTEM VERIFICATION TESTS (SECONDARY FOCUS)
     print("\n💬 CHAT SYSTEM VERIFICATION TESTS (SECONDARY FOCUS)")
     print("-" * 50)
