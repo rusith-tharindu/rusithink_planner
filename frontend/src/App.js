@@ -637,7 +637,7 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
   const fileInputRef = useRef(null);
 
   // Determine recipient based on user role
-  const recipientId = user.role === 'admin' ? adminUserId : adminUserId;
+  const recipientId = user.role === 'admin' ? adminUserId : adminUserId; // For clients, recipient is admin
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -650,7 +650,7 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
     try {
       const params = new URLSearchParams();
       if (taskId) params.append('task_id', taskId);
-      if (user.role === 'admin') params.append('client_id', recipientId);
+      // Both admin and client use the same logic - fetch messages between them
       
       const response = await axios.get(`${API}/chat/messages${params.toString() ? `?${params}` : ''}`, { 
         withCredentials: true 
