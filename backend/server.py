@@ -1688,7 +1688,7 @@ async def bulk_delete_chat_messages(message_ids: List[str], request: Request):
 
 @api_router.get("/admin/chat/export/{client_id}")
 async def export_client_chat(client_id: str, request: Request):
-    """Export chat messages for a specific client (admin only)"""
+    """Export chat messages for a specific client as PDF (admin only)"""
     await require_admin(request)
     
     try:
@@ -1714,20 +1714,43 @@ async def export_client_chat(client_id: str, request: Request):
             ]
         }).sort("created_at", 1).to_list(1000)
         
-        # Prepare CSV data
-        import io
-        import csv
+        # Create PDF buffer
+        pdf_buffer = io.BytesIO()
+        doc = SimpleDocTemplate(pdf_buffer, pagesize=A4)
         
-        output = io.StringIO()
-        writer = csv.writer(output)
+        # Get styles
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=16,
+            spaceAfter=30,
+            alignment=1  # Center alignment
+        )
         
-        # CSV headers
-        writer.writerow([
-            'Date & Time', 'Sender', 'Role', 'Message Type', 'Content', 'File Name', 'Task ID'
-        ])
+        # Build PDF content
+        story = []
+        
+        # Add title
+        client_name = client_user.get('name', client_user.get('email', 'Unknown'))
+        title = Paragraph(f"Chat History with {client_name}", title_style)
+        story.append(title)
+        story.append(Spacer(1, 20))
+        
+        # Add export info
+        export_info = Paragraph(
+            f"<b>Client:</b> {client_name}<br/>"
+            f"<b>Email:</b> {client_user.get('email', 'N/A')}<br/>"
+            f"<b>Company:</b> {client_user.get('company_name', 'N/A')}<br/>"
+            f"<b>Export Date:</b> {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC<br/>"
+            f"<b>Total Messages:</b> {len(messages)}",
+            styles['Normal']
+        )
+        story.append(export_info)
+        story.append(Spacer(1, 30))
         
         # Process messages
-        for msg in messages:
+        for i, msg in enumerate(messages):
             msg = parse_from_mongo(msg)
             
             # Format datetime
@@ -1735,28 +1758,44 @@ async def export_client_chat(client_id: str, request: Request):
             if isinstance(created_at, datetime):
                 formatted_date = created_at.strftime('%Y-%m-%d %H:%M:%S')
             else:
-                formatted_date = str(created_at)[:19]  # Take first 19 chars for datetime format
+                formatted_date = str(created_at)[:19]
             
-            writer.writerow([
-                formatted_date,
-                msg.get('sender_name', ''),
-                msg.get('sender_role', '').upper(),
-                msg.get('message_type', 'text').upper(),
-                msg.get('content', ''),
-                msg.get('file_name', ''),
-                msg.get('task_id', '')
-            ])
+            # Create message content
+            sender_name = msg.get('sender_name', 'Unknown')
+            sender_role = msg.get('sender_role', '').upper()
+            content = msg.get('content', '')
+            message_type = msg.get('message_type', 'text')
+            
+            # Message header
+            msg_header = f"<b>{sender_name} ({sender_role})</b> - {formatted_date}"
+            story.append(Paragraph(msg_header, styles['Heading3']))
+            
+            # Message content
+            if message_type == 'file':
+                file_name = msg.get('file_name', 'Unknown file')
+                file_size = msg.get('file_size', 0)
+                size_mb = round(file_size / (1024 * 1024), 2) if file_size else 0
+                content += f" [File: {file_name}, Size: {size_mb} MB]"
+            
+            msg_content = Paragraph(content, styles['Normal'])
+            story.append(msg_content)
+            story.append(Spacer(1, 15))
+            
+            # Add page break every 20 messages to avoid overcrowding
+            if (i + 1) % 20 == 0 and i < len(messages) - 1:
+                story.append(Spacer(1, 50))
+        
+        # Build PDF
+        doc.build(story)
+        pdf_buffer.seek(0)
         
         # Prepare response
-        csv_content = output.getvalue()
-        output.close()
-        
-        client_name = client_user.get('name', client_user.get('email', 'unknown'))
-        filename = f"chat_export_{client_name}_{datetime.now().strftime('%Y%m%d')}.csv"
+        client_name_clean = client_name.replace(' ', '_').replace('@', '_at_')
+        filename = f"chat_history_{client_name_clean}_{datetime.now().strftime('%Y%m%d')}.pdf"
         
         return StreamingResponse(
-            io.BytesIO(csv_content.encode('utf-8')),
-            media_type="text/csv",
+            io.BytesIO(pdf_buffer.getvalue()),
+            media_type="application/pdf",
             headers={"Content-Disposition": f"attachment; filename={filename}"}
         )
         
