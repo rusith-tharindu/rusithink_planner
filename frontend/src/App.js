@@ -1592,12 +1592,15 @@ const AdminUserManagement = ({ isVisible, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [editForm, setEditForm] = useState({});
+  const [selectedUsers, setSelectedUsers] = useState(new Set());
+  const [deleting, setDeleting] = useState(false);
 
   const fetchUsers = async () => {
     setLoading(true);
     try {
       const response = await axios.get(`${API}/admin/users`, { withCredentials: true });
       setUsers(response.data);
+      setSelectedUsers(new Set()); // Clear selections when refreshing
     } catch (error) {
       console.error('Error fetching users:', error);
       toast.error('Failed to load users');
@@ -1616,6 +1619,67 @@ const AdminUserManagement = ({ isVisible, onClose }) => {
     } catch (error) {
       console.error('Error updating user:', error);
       toast.error('Failed to update user');
+    }
+  };
+
+  const deleteUser = async (userId) => {
+    try {
+      const response = await axios.delete(`${API}/admin/users/${userId}`, { withCredentials: true });
+      toast.success(response.data.message);
+      fetchUsers();
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      const errorMsg = error.response?.data?.detail || 'Failed to delete user';
+      toast.error(errorMsg);
+    }
+  };
+
+  const deleteSelectedUsers = async () => {
+    if (selectedUsers.size === 0) return;
+    
+    if (!window.confirm(`Are you sure you want to delete ${selectedUsers.size} user(s)? This action cannot be undone.`)) {
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      const userIds = Array.from(selectedUsers);
+      const response = await axios.delete(`${API}/admin/users/bulk`, {
+        data: userIds,
+        withCredentials: true
+      });
+      
+      toast.success(response.data.message);
+      if (response.data.errors && response.data.errors.length > 0) {
+        response.data.errors.forEach(error => toast.error(error));
+      }
+      
+      setSelectedUsers(new Set());
+      fetchUsers();
+    } catch (error) {
+      console.error('Error deleting users:', error);
+      const errorMsg = error.response?.data?.detail || 'Failed to delete users';
+      toast.error(errorMsg);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const toggleUserSelection = (userId) => {
+    const newSelection = new Set(selectedUsers);
+    if (newSelection.has(userId)) {
+      newSelection.delete(userId);
+    } else {
+      newSelection.add(userId);
+    }
+    setSelectedUsers(newSelection);
+  };
+
+  const toggleAllUsers = () => {
+    if (selectedUsers.size === users.length) {
+      setSelectedUsers(new Set());
+    } else {
+      setSelectedUsers(new Set(users.map(user => user.id)));
     }
   };
 
@@ -1703,7 +1767,7 @@ const AdminUserManagement = ({ isVisible, onClose }) => {
       <DialogContent className="bg-slate-900 border-slate-700 text-slate-100 max-w-7xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
-            <Users className="w-6 h-6 text-blue-400" />
+            <Users className="w-6 h-6 text-yellow-400" />
             User Management
           </DialogTitle>
           <DialogDescription className="text-slate-400">
@@ -1712,28 +1776,50 @@ const AdminUserManagement = ({ isVisible, onClose }) => {
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Export Buttons */}
-          <div className="flex gap-3">
-            <Button 
-              onClick={exportCSV}
-              className="bg-green-600 hover:bg-green-700 text-white"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Export CSV
-            </Button>
-            <Button 
-              onClick={exportPDF}
-              className="bg-red-600 hover:bg-red-700 text-white"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Export PDF
-            </Button>
+          {/* Action Buttons */}
+          <div className="flex justify-between items-center">
+            <div className="flex gap-3">
+              <Button 
+                onClick={exportCSV}
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Export CSV
+              </Button>
+              <Button 
+                onClick={exportPDF}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Export PDF
+              </Button>
+            </div>
+            
+            {selectedUsers.size > 0 && (
+              <div className="flex gap-3 items-center">
+                <span className="text-sm text-slate-400">
+                  {selectedUsers.size} user(s) selected
+                </span>
+                <Button 
+                  onClick={deleteSelectedUsers}
+                  disabled={deleting}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  {deleting ? (
+                    <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                  ) : (
+                    <Trash2 className="w-4 h-4 mr-2" />
+                  )}
+                  Delete Selected
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Users Table */}
           {loading ? (
             <div className="text-center py-8">
-              <div className="loading-spinner mx-auto mb-4"></div>
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400 mb-4"></div>
               <p className="text-slate-400">Loading users...</p>
             </div>
           ) : (
@@ -1741,6 +1827,14 @@ const AdminUserManagement = ({ isVisible, onClose }) => {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-700">
+                    <th className="text-left p-3 text-slate-200">
+                      <input
+                        type="checkbox"
+                        checked={users.length > 0 && selectedUsers.size === users.length}
+                        onChange={toggleAllUsers}
+                        className="rounded border-slate-600 bg-slate-800 text-yellow-500 focus:ring-yellow-500"
+                      />
+                    </th>
                     <th className="text-left p-3 text-slate-200">Name</th>
                     <th className="text-left p-3 text-slate-200">Email</th>
                     <th className="text-left p-3 text-slate-200">Phone</th>
@@ -1754,6 +1848,14 @@ const AdminUserManagement = ({ isVisible, onClose }) => {
                 <tbody>
                   {users.map((user) => (
                     <tr key={user.id} className="border-b border-slate-800">
+                      <td className="p-3">
+                        <input
+                          type="checkbox"
+                          checked={selectedUsers.has(user.id)}
+                          onChange={() => toggleUserSelection(user.id)}
+                          className="rounded border-slate-600 bg-slate-800 text-yellow-500 focus:ring-yellow-500"
+                        />
+                      </td>
                       <td className="p-3">
                         {editingUser === user.id ? (
                           <div className="space-y-1">
@@ -1861,14 +1963,30 @@ const AdminUserManagement = ({ isVisible, onClose }) => {
                             </Button>
                           </div>
                         ) : (
-                          <Button 
-                            size="sm" 
-                            onClick={() => handleEdit(user)}
-                            variant="ghost"
-                            className="text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
-                          >
-                            <Edit className="w-3 h-3" />
-                          </Button>
+                          <div className="flex gap-1">
+                            <Button 
+                              size="sm" 
+                              onClick={() => handleEdit(user)}
+                              variant="ghost"
+                              className="text-yellow-400 hover:text-yellow-300 hover:bg-yellow-900/20"
+                            >
+                              <Edit className="w-3 h-3" />
+                            </Button>
+                            {user.role !== 'admin' && (
+                              <Button 
+                                size="sm" 
+                                onClick={() => {
+                                  if (window.confirm(`Are you sure you want to delete ${user.name}? This action cannot be undone.`)) {
+                                    deleteUser(user.id);
+                                  }
+                                }}
+                                variant="ghost"
+                                className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            )}
+                          </div>
                         )}
                       </td>
                     </tr>
