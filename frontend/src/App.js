@@ -694,6 +694,7 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
 
     const messageToSend = newMessage.trim();
     setNewMessage(''); // Clear input immediately for better UX
+    shouldAutoScroll.current = true; // Enable auto-scroll for user's own message
     
     try {
       const messageData = {
@@ -703,7 +704,6 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
       };
 
       await axios.post(`${API}/chat/messages`, messageData, { withCredentials: true });
-      // Don't show success toast for every message to avoid spam
       // Fetch messages immediately without waiting for polling
       fetchMessages();
     } catch (error) {
