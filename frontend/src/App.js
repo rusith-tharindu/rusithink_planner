@@ -19,6 +19,11 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
+// Debug logging
+console.log('Environment REACT_APP_BACKEND_URL:', process.env.REACT_APP_BACKEND_URL);
+console.log('BACKEND_URL:', BACKEND_URL);
+console.log('API:', API);
+
 // Auth Context
 const AuthContext = React.createContext();
 
