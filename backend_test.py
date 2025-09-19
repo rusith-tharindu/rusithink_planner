@@ -977,12 +977,53 @@ class ProjectPlannerAPITester:
             print("❌ No admin session available for bulk deletion test")
             return False
         
-        if not hasattr(self, 'test_client_ids') or len(self.test_client_ids) < 2:
+        if not hasattr(self, 'test_client_ids') or len(self.test_client_ids) < 1:
             print("❌ Not enough test client users available for bulk deletion")
             return False
         
-        # Delete remaining test clients in bulk
-        user_ids_to_delete = self.test_client_ids[:2]  # Take first 2 remaining
+        # Create additional test users for bulk deletion
+        additional_users = [
+            {
+                "email": "bulk_test1@example.com",
+                "password": "testpass123",
+                "first_name": "Bulk",
+                "last_name": "Test1",
+                "phone": "+1234567893",
+                "company_name": "Bulk Test Company 1"
+            },
+            {
+                "email": "bulk_test2@example.com",
+                "password": "testpass123",
+                "first_name": "Bulk",
+                "last_name": "Test2",
+                "phone": "+1234567894",
+                "company_name": "Bulk Test Company 2"
+            }
+        ]
+        
+        bulk_user_ids = []
+        for user_data in additional_users:
+            success, response, _ = self.run_test(
+                f"Create Bulk Test User ({user_data['email']})",
+                "POST",
+                "auth/register",
+                200,
+                data=user_data
+            )
+            
+            if success and 'user' in response:
+                bulk_user_ids.append(response['user']['id'])
+        
+        # Add existing test client if available
+        if self.test_client_ids:
+            bulk_user_ids.append(self.test_client_ids[0])
+        
+        if len(bulk_user_ids) < 2:
+            print("❌ Could not create enough users for bulk deletion test")
+            return False
+        
+        # Delete users in bulk
+        user_ids_to_delete = bulk_user_ids[:2]  # Take first 2
         
         url = f"{self.api_url}/admin/users/bulk"
         print(f"\n🔍 Testing Bulk User Delete (Success)...")
