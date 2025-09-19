@@ -1724,6 +1724,265 @@ async def get_admin_chat_conversations(request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch conversations: {str(e)}")
 
+# Analytics calculation functions
+async def calculate_client_analytics(client_id: str):
+    """Calculate and update client analytics"""
+    try:
+        # Get all tasks for this client
+        client_tasks = await db.tasks.find({"created_by": client_id}).to_list(1000)
+        
+        total_projects = len(client_tasks)
+        completed_projects = len([task for task in client_tasks if task.get("status") == "completed"])
+        pending_projects = total_projects - completed_projects
+        
+        # Calculate financial metrics
+        total_spent = sum(task.get("project_price", 0) for task in client_tasks)
+        average_project_value = total_spent / total_projects if total_projects > 0 else 0
+        project_completion_rate = (completed_projects / total_projects * 100) if total_projects > 0 else 0
+        
+        # Calculate monthly spending
+        monthly_spending = {}
+        for task in client_tasks:
+            task_date = task.get("created_at")
+            if isinstance(task_date, str):
+                task_date = datetime.fromisoformat(task_date.replace('Z', '+00:00'))
+            elif isinstance(task_date, datetime):
+                pass
+            else:
+                continue
+                
+            month_key = task_date.strftime("%Y-%m")
+            project_price = task.get("project_price", 0)
+            monthly_spending[month_key] = monthly_spending.get(month_key, 0) + project_price
+        
+        # Update or create client analytics
+        analytics_data = {
+            "client_id": client_id,
+            "total_projects": total_projects,
+            "completed_projects": completed_projects,
+            "pending_projects": pending_projects,
+            "total_spent": total_spent,
+            "average_project_value": average_project_value,
+            "monthly_spending": monthly_spending,
+            "project_completion_rate": project_completion_rate,
+            "updated_at": datetime.now(timezone.utc)
+        }
+        
+        # Upsert analytics record
+        await db.client_analytics.update_one(
+            {"client_id": client_id},
+            {"$set": analytics_data},
+            upsert=True
+        )
+        
+        return analytics_data
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to calculate client analytics: {str(e)}")
+
+async def calculate_admin_analytics(month_year: str = None):
+    """Calculate and update admin analytics for a specific month or current month"""
+    try:
+        if not month_year:
+            month_year = datetime.now(timezone.utc).strftime("%Y-%m")
+        
+        # Parse month_year to get date range
+        year, month = map(int, month_year.split("-"))
+        start_date = datetime(year, month, 1, tzinfo=timezone.utc)
+        if month == 12:
+            end_date = datetime(year + 1, 1, 1, tzinfo=timezone.utc)
+        else:
+            end_date = datetime(year, month + 1, 1, tzinfo=timezone.utc)
+        
+        # Get all tasks for this month
+        all_tasks = await db.tasks.find({}).to_list(10000)
+        month_tasks = []
+        
+        for task in all_tasks:
+            task_date = task.get("created_at")
+            if isinstance(task_date, str):
+                task_date = datetime.fromisoformat(task_date.replace('Z', '+00:00'))
+            elif isinstance(task_date, datetime):
+                pass
+            else:
+                continue
+                
+            if start_date <= task_date < end_date:
+                month_tasks.append(task)
+        
+        # Calculate metrics
+        total_projects = len(month_tasks)
+        completed_projects = len([task for task in month_tasks if task.get("status") == "completed"])
+        pending_projects = total_projects - completed_projects
+        total_revenue = sum(task.get("project_price", 0) for task in month_tasks)
+        average_project_value = total_revenue / total_projects if total_projects > 0 else 0
+        project_completion_rate = (completed_projects / total_projects * 100) if total_projects > 0 else 0
+        
+        # Calculate client metrics
+        client_ids_this_month = set(task.get("created_by") for task in month_tasks)
+        active_clients = len(client_ids_this_month)
+        
+        # Get new clients this month
+        new_clients_count = 0
+        all_users = await db.users.find({"role": "client"}).to_list(1000)
+        for user in all_users:
+            user_date = user.get("created_at")
+            if isinstance(user_date, str):
+                user_date = datetime.fromisoformat(user_date.replace('Z', '+00:00'))
+            elif isinstance(user_date, datetime):
+                pass
+            else:
+                continue
+                
+            if start_date <= user_date < end_date:
+                new_clients_count += 1
+        
+        # Calculate revenue by client
+        revenue_by_client = {}
+        for task in month_tasks:
+            client_id = task.get("created_by")
+            if client_id:
+                revenue_by_client[client_id] = revenue_by_client.get(client_id, 0) + task.get("project_price", 0)
+        
+        # Update or create admin analytics
+        analytics_data = {
+            "month_year": month_year,
+            "total_revenue": total_revenue,
+            "total_projects": total_projects,
+            "completed_projects": completed_projects,
+            "pending_projects": pending_projects,
+            "new_clients": new_clients_count,
+            "active_clients": active_clients,
+            "average_project_value": average_project_value,
+            "project_completion_rate": project_completion_rate,
+            "revenue_by_client": revenue_by_client,
+            "updated_at": datetime.now(timezone.utc)
+        }
+        
+        # Upsert analytics record
+        await db.admin_analytics.update_one(
+            {"month_year": month_year},
+            {"$set": analytics_data},
+            upsert=True
+        )
+        
+        return analytics_data
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to calculate admin analytics: {str(e)}")
+
+# Analytics API endpoints
+@api_router.get("/analytics/client")
+async def get_client_analytics(request: Request):
+    """Get client analytics"""
+    user = await require_auth(request)
+    
+    if user.role != UserRole.CLIENT:
+        raise HTTPException(status_code=403, detail="Only clients can access client analytics")
+    
+    try:
+        # Calculate fresh analytics
+        analytics_data = await calculate_client_analytics(user.id)
+        
+        # Get historical data for trends
+        analytics_record = await db.client_analytics.find_one({"client_id": user.id})
+        if analytics_record:
+            analytics_record = parse_from_mongo(analytics_record)
+            return ClientAnalytics(**analytics_record)
+        else:
+            return ClientAnalytics(**analytics_data)
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get client analytics: {str(e)}")
+
+@api_router.get("/analytics/admin")
+async def get_admin_analytics(request: Request, months: int = 12):
+    """Get admin analytics for the last N months"""
+    await require_admin(request)
+    
+    try:
+        analytics_data = []
+        current_date = datetime.now(timezone.utc)
+        
+        # Get analytics for the last N months
+        for i in range(months):
+            # Calculate date for each month
+            if current_date.month - i <= 0:
+                year = current_date.year - 1
+                month = 12 + (current_date.month - i)
+            else:
+                year = current_date.year
+                month = current_date.month - i
+            
+            month_year = f"{year}-{month:02d}"
+            
+            # Calculate analytics for this month
+            month_analytics = await calculate_admin_analytics(month_year)
+            analytics_data.append(month_analytics)
+        
+        # Also get stored historical data
+        historical_records = await db.admin_analytics.find({}).sort("month_year", -1).limit(months).to_list(months)
+        
+        # Merge calculated and historical data
+        stored_data = {}
+        for record in historical_records:
+            record = parse_from_mongo(record)
+            stored_data[record["month_year"]] = record
+        
+        # Use stored data if available, otherwise use calculated data
+        final_analytics = []
+        for calc_data in analytics_data:
+            month_year = calc_data["month_year"]
+            if month_year in stored_data:
+                final_analytics.append(AdminAnalytics(**stored_data[month_year]))
+            else:
+                final_analytics.append(AdminAnalytics(**calc_data))
+        
+        return final_analytics[::-1]  # Return chronological order
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get admin analytics: {str(e)}")
+
+@api_router.post("/analytics/calculate")
+async def recalculate_analytics(request: Request):
+    """Recalculate analytics for all users (admin only)"""
+    await require_admin(request)
+    
+    try:
+        # Recalculate client analytics for all clients
+        clients = await db.users.find({"role": "client"}).to_list(1000)
+        client_count = 0
+        
+        for client in clients:
+            client = parse_from_mongo(client)
+            await calculate_client_analytics(client["id"])
+            client_count += 1
+        
+        # Recalculate admin analytics for last 12 months
+        current_date = datetime.now(timezone.utc)
+        admin_months = 0
+        
+        for i in range(12):
+            if current_date.month - i <= 0:
+                year = current_date.year - 1
+                month = 12 + (current_date.month - i)
+            else:
+                year = current_date.year
+                month = current_date.month - i
+            
+            month_year = f"{year}-{month:02d}"
+            await calculate_admin_analytics(month_year)
+            admin_months += 1
+        
+        return {
+            "message": "Analytics recalculated successfully",
+            "clients_processed": client_count,
+            "admin_months_processed": admin_months
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to recalculate analytics: {str(e)}")
+
 # Include the router in the main app
 app.include_router(api_router)
 
