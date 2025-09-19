@@ -473,11 +473,11 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Admin User Management Table UI"
-    - "Client Registration Form with Address"
-  stuck_tasks: []
+    - "Frontend Backend URL Configuration Fix"
+  stuck_tasks:
+    - "Frontend Backend URL Configuration Fix"
   test_all: false
-  test_priority: "high_first"
+  test_priority: "critical_first"
   completed_focus:
     - "Chat Message History and Conversation Continuity Fix"
     - "Client Chat Message Visibility Debug"
@@ -487,6 +487,9 @@ test_plan:
     - "User Management API Endpoints"
     - "Chat Export as PDF Functionality"
     - "Chat Management Frontend UI Testing"
+  blocked_by_backend_url:
+    - "Admin User Management Table UI"
+    - "Client Registration Form with Address"
 
 agent_communication:
   - agent: "main"
