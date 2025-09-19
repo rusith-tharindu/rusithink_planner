@@ -1952,7 +1952,7 @@ async def calculate_admin_analytics(month_year: str = None):
         total_projects = len(month_tasks)
         completed_projects = len([task for task in month_tasks if task.get("status") == "completed"])
         pending_projects = total_projects - completed_projects
-        total_revenue = sum(task.get("project_price", 0) for task in month_tasks)
+        total_revenue = sum(task.get("project_price") or 0 for task in month_tasks)
         average_project_value = total_revenue / total_projects if total_projects > 0 else 0
         project_completion_rate = (completed_projects / total_projects * 100) if total_projects > 0 else 0
         
