@@ -2659,11 +2659,14 @@ const Dashboard = () => {
   const fetchAdminUser = async () => {
     if (isClient) {
       try {
+        console.log('Client: Fetching admin user info...');
         // Get admin user info for chat
         const response = await axios.get(`${API}/chat/admin-info`, { withCredentials: true });
+        console.log('Client: Admin user fetched:', response.data);
         setAdminUser(response.data);
       } catch (error) {
         console.error('Error fetching admin user:', error);
+        toast.error('Failed to load chat system');
       }
     }
   };
