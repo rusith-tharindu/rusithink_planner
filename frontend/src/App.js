@@ -1968,11 +1968,11 @@ const Dashboard = () => {
                 className="h-12 w-auto"
               />
               <div>
-                <h1 className="text-3xl font-bold text-slate-100 mb-2">
+                <h1 className="text-3xl font-bold text-white mb-2">
                   RusiThink
-                  {isAdmin && <Badge className="ml-3 bg-red-900/20 text-red-400 border-red-700/30">ADMIN</Badge>}
+                  {isAdmin && <Badge className="ml-3 bg-red-900/50 text-red-400 border-red-700/30">ADMIN</Badge>}
                 </h1>
-                <p className="text-slate-400">
+                <p className="text-gray-300">
                   {isAdmin ? 'Manage all projects and client tasks' : 'Manage your projects and track deadlines'}
                 </p>
               </div>
@@ -1984,7 +1984,7 @@ const Dashboard = () => {
                 <Button 
                   onClick={() => setShowUserManagement(true)}
                   variant="outline" 
-                  className="border-slate-600 text-slate-200 hover:bg-slate-700"
+                  className="border-yellow-500 text-yellow-500 hover:bg-yellow-500 hover:text-black"
                 >
                   <Users className="w-4 h-4 mr-2" />
                   Manage Users
@@ -1996,7 +1996,7 @@ const Dashboard = () => {
                 <Button 
                   onClick={() => setShowChatManagement(true)}
                   variant="outline" 
-                  className="border-slate-600 text-slate-200 hover:bg-slate-700"
+                  className="border-yellow-500 text-yellow-500 hover:bg-yellow-500 hover:text-black"
                 >
                   <MessageSquare className="w-4 h-4 mr-2" />
                   Chat Center
@@ -2006,8 +2006,8 @@ const Dashboard = () => {
               {/* Notification Bell */}
               {unreadCount > 0 && (
                 <div className="relative">
-                  <Bell className="w-6 h-6 text-orange-400" />
-                  <Badge className="absolute -top-2 -right-2 bg-orange-600 text-white text-xs min-w-[20px] h-5 rounded-full flex items-center justify-center">
+                  <Bell className="w-6 h-6 text-yellow-400" />
+                  <Badge className="absolute -top-2 -right-2 bg-yellow-600 text-black text-xs min-w-[20px] h-5 rounded-full flex items-center justify-center font-semibold">
                     {unreadCount}
                   </Badge>
                 </div>
@@ -2015,15 +2015,15 @@ const Dashboard = () => {
               
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button className="bg-blue-600 hover:bg-blue-700">
+                  <Button className="bg-yellow-600 hover:bg-yellow-700 text-black font-semibold">
                     <Plus className="w-4 h-4 mr-2" />
                     New Task
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="bg-slate-900 border-slate-700 text-slate-100 max-w-2xl">
+                <DialogContent className="bg-gray-900 border-gray-700 text-white max-w-2xl">
                   <DialogHeader>
                     <DialogTitle>Create New Task</DialogTitle>
-                    <DialogDescription className="text-slate-400">
+                    <DialogDescription className="text-gray-400">
                       Add a new task to your project timeline
                     </DialogDescription>
                   </DialogHeader>
@@ -2031,7 +2031,7 @@ const Dashboard = () => {
                 </DialogContent>
               </Dialog>
               
-              <Button onClick={logout} variant="outline" className="border-slate-600 text-slate-200">
+              <Button onClick={logout} variant="outline" className="border-gray-600 text-gray-200 hover:bg-gray-800">
                 <LogOut className="w-4 h-4 mr-2" />
                 Logout
               </Button>
@@ -2040,20 +2040,20 @@ const Dashboard = () => {
         </div>
 
         {/* User Info */}
-        <div className="bg-slate-900/30 rounded-lg p-4 mb-8">
+        <div className="bg-gray-900/50 rounded-lg p-4 mb-8 border border-gray-700/30">
           <div className="flex items-center gap-3">
             {user?.picture ? (
               <img src={user.picture} alt={user.name} className="w-10 h-10 rounded-full" />
             ) : (
-              <div className="w-10 h-10 bg-slate-700 rounded-full flex items-center justify-center">
-                <User className="w-5 h-5 text-slate-400" />
+              <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center">
+                <User className="w-5 h-5 text-gray-400" />
               </div>
             )}
             <div>
-              <p className="text-slate-100 font-medium">{user?.name}</p>
-              <p className="text-slate-400 text-sm">{user?.email}</p>
+              <p className="text-white font-medium">{user?.name}</p>
+              <p className="text-gray-400 text-sm">{user?.email}</p>
               {user?.company_name && (
-                <p className="text-slate-500 text-xs">{user.company_name}</p>
+                <p className="text-gray-500 text-xs">{user.company_name}</p>
               )}
             </div>
           </div>
