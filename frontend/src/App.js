@@ -648,10 +648,12 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
   // For admin in chat manager: recipient should be the selected client (adminUserId holds client ID)
   const recipientId = adminUserId;
 
-  const scrollToBottom = () => {
-    // Use the messages container ref for precise scrolling
+  const handleScroll = () => {
     if (messagesContainerRef.current) {
-      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+      const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+      // If user scrolled up from bottom, disable auto-scroll
+      const isAtBottom = scrollTop + clientHeight >= scrollHeight - 10;
+      shouldAutoScroll.current = isAtBottom;
     }
   };
 
