@@ -320,6 +320,18 @@ backend:
         agent: "testing"
         comment: "🎉 CLIENT CHAT SYSTEM VISIBILITY FIX VERIFICATION COMPLETED! Comprehensive focused testing of the specific review request confirms ALL CRITICAL FIXES ARE WORKING PERFECTLY: ✅ FOCUS TEST 1 - Backend Admin Info Endpoint: GET /api/chat/admin-info working perfectly for clients - clients can successfully retrieve admin information for chat initialization ✅ FOCUS TEST 2 - Message Exchange Flow: Complete bidirectional flow verified - Admin sends message to client → Client fetches and can see admin message immediately → Client sends reply → Admin can see both messages. CRITICAL FIX CONFIRMED: Clients can now see admin messages! ✅ FOCUS TEST 3 - Chat System Initialization: Client calls GET /api/chat/messages and gets proper conversation history with all messages preserved, message filtering works correctly for client users, conversation continuity maintained ✅ FOCUS TEST 4 - Chat System Always Available: Chat system accessible without task dependency, general chat works with taskId=null, admin info and messaging available without selected task context. SUCCESS RATE: 100% (4/4 tests passed). The key changes mentioned in review request are all working: chat system moved to main dashboard, always available for clients, proper debugging logs, taskId set to null for general chat. Client chat visibility fix is FULLY OPERATIONAL and ready for production use."
 
+  - task: "Admin Chat Delete Functionality"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "🎉 ADMIN CHAT DELETE FUNCTIONALITY TESTING COMPLETED! Comprehensive testing of the new admin chat delete features shows ALL functionality working perfectly: 1) DELETE SINGLE MESSAGE (DELETE /api/admin/chat/message/{message_id}) ✅ - Admin authentication required ✅, Message deletion successful ✅, Proper error handling for non-existent messages (404) ✅, Unauthorized access properly blocked (403) ✅. 2) DELETE CONVERSATION (DELETE /api/admin/chat/conversation/{client_id}) ✅ - Admin authentication required ✅, Complete conversation deletion successful ✅, Safety checks working (cannot delete admin conversations) ✅, Proper error handling for non-existent clients (404) ✅, All messages between admin and client properly removed ✅. 3) BULK DELETE MESSAGES (DELETE /api/admin/chat/bulk-delete) ✅ - Bulk deletion with multiple message IDs successful ✅, Proper response format with deleted count and errors ✅, Partial success scenarios handled correctly ✅, Mixed scenario testing passed (valid messages deleted, invalid messages properly rejected with error messages) ✅. 4) COMPREHENSIVE SCENARIO TESTING ✅ - Multiple clients and operations tested ✅, Privacy maintained between different clients ✅, Individual, bulk, and conversation deletions all working together ✅. All 165/169 backend tests passed (97.6% success rate). The new admin chat delete functionality is fully operational and ready for production use."
+
 frontend:
   - task: "Admin User Management Table UI"
     implemented: false
