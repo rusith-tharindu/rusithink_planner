@@ -648,22 +648,25 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
   const fetchMessages = async () => {
     if (!recipientId) return;
     
+    // Don't fetch if already loading to prevent multiple simultaneous requests
+    if (loading) return;
+    
     setLoading(true);
     try {
       const params = new URLSearchParams();
       if (taskId) params.append('task_id', taskId);
-      // Both admin and client use the same logic - fetch messages between them
-      
-      console.log('Fetching messages for user:', user.role, 'recipient:', recipientId, 'taskId:', taskId);
       
       const response = await axios.get(`${API}/chat/messages${params.toString() ? `?${params}` : ''}`, { 
-        withCredentials: true 
+        withCredentials: true,
+        timeout: 5000 // Add timeout to prevent hanging requests
       });
       
-      console.log('Messages received:', response.data.length);
       setMessages(response.data);
     } catch (error) {
-      console.error('Error fetching messages:', error);
+      // Only log errors that aren't network timeouts to reduce console spam
+      if (error.code !== 'ECONNABORTED') {
+        console.error('Error fetching messages:', error);
+      }
     } finally {
       setLoading(false);
     }
