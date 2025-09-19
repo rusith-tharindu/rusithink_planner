@@ -2842,6 +2842,23 @@ def main():
     test_results.append(tester.test_chat_system_basic_functionality())
     test_results.append(tester.test_chat_file_upload_still_works())
     
+    # ANALYTICS SYSTEM TESTS (PRIMARY FOCUS)
+    print("\n📊 ANALYTICS SYSTEM TESTS (PRIMARY FOCUS)")
+    print("-" * 40)
+    print("Testing new analytics system for RusiThink:")
+    print("• Client Analytics Endpoints")
+    print("• Admin Analytics Endpoints with different month parameters")
+    print("• Analytics Calculation Functions")
+    print("• Data Persistence and Accuracy")
+    test_results.append(tester.test_client_analytics_endpoint())
+    test_results.append(tester.test_client_analytics_unauthorized())
+    test_results.append(tester.test_admin_analytics_endpoint())
+    test_results.append(tester.test_admin_analytics_unauthorized())
+    test_results.append(tester.test_analytics_calculation_endpoint())
+    test_results.append(tester.test_analytics_calculation_unauthorized())
+    test_results.append(tester.test_analytics_data_persistence())
+    test_results.append(tester.test_analytics_date_parsing_accuracy())
+    
     # Milestone tests
     test_results.append(tester.test_create_milestone())
     test_results.append(tester.test_get_milestones())
