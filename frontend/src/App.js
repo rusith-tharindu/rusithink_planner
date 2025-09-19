@@ -392,36 +392,39 @@ const Login = () => {
                 </div>
               </form>
             ) : (
+              // Admin login form
               <form onSubmit={handleAdminLogin} className="space-y-4">
+                <h3 className="text-xl font-semibold text-white mb-4">Admin Access</h3>
+                
                 <div className="space-y-2">
-                  <Label htmlFor="username" className="text-slate-200">Username</Label>
+                  <Label htmlFor="username" className="text-gray-200">Username</Label>
                   <Input
                     id="username"
                     type="text"
                     value={adminLogin.username}
                     onChange={(e) => setAdminLogin({...adminLogin, username: e.target.value})}
-                    className="bg-slate-800 border-slate-600 text-slate-100"
+                    className="bg-gray-800 border-gray-600 text-white focus:border-yellow-500 focus:ring-yellow-500"
                     required
                   />
                 </div>
-                
+
                 <div className="space-y-2">
-                  <Label htmlFor="password" className="text-slate-200">Password</Label>
+                  <Label htmlFor="admin-password" className="text-gray-200">Password</Label>
                   <Input
-                    id="password"
+                    id="admin-password"
                     type="password"
                     value={adminLogin.password}
                     onChange={(e) => setAdminLogin({...adminLogin, password: e.target.value})}
-                    className="bg-slate-800 border-slate-600 text-slate-100"
+                    className="bg-gray-800 border-gray-600 text-white focus:border-yellow-500 focus:ring-yellow-500"
                     required
                   />
                 </div>
-                
-                <div className="flex gap-3">
-                  <Button 
-                    type="submit" 
+
+                <div className="flex gap-4 pt-4">
+                  <Button
+                    type="submit"
                     disabled={loading}
-                    className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold"
                   >
                     {loading ? 'Signing in...' : 'Admin Sign In'}
                   </Button>
@@ -429,7 +432,7 @@ const Login = () => {
                     type="button"
                     onClick={() => setShowAdminLogin(false)}
                     variant="outline"
-                    className="border-slate-600 text-slate-200"
+                    className="border-gray-600 text-gray-200 hover:bg-gray-800"
                   >
                     Back
                   </Button>
