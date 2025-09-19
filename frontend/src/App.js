@@ -2745,13 +2745,23 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      await Promise.all([fetchTasks(), fetchStats(), fetchAdminUser()]);
-      setLoading(false);
-    };
-    
-    loadData();
+    if (user) {
+      console.log('Dashboard: User loaded:', {
+        id: user.id,
+        name: user.name,
+        role: user.role,
+        email: user.email
+      });
+      console.log('Dashboard: isClient =', isClient, ', isAdmin =', isAdmin);
+      console.log('Dashboard: adminUser =', adminUser);
+      
+      const loadData = async () => {
+        setLoading(true);
+        await Promise.all([fetchTasks(), fetchStats(), fetchAdminUser()]);
+        setLoading(false);
+      };
+      loadData();
+    }
     
     // Polling for updates
     const interval = setInterval(() => {
@@ -2759,7 +2769,7 @@ const Dashboard = () => {
     }, 30000);
     
     return () => clearInterval(interval);
-  }, [isClient]);
+  }, [user, isClient]);
 
   if (loading) {
     return (
