@@ -642,6 +642,322 @@ const AdminChatManager = ({ isVisible, onClose }) => {
   );
 };
 
+// Admin Analytics Dashboard Component
+const AdminAnalyticsDashboard = () => {
+  const [analytics, setAnalytics] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedPeriod, setSelectedPeriod] = useState(12); // months
+
+  const fetchAdminAnalytics = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get(`${API}/analytics/admin?months=${selectedPeriod}`, { withCredentials: true });
+      setAnalytics(response.data);
+    } catch (error) {
+      console.error('Error fetching admin analytics:', error);
+      toast.error('Failed to load analytics');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const recalculateAnalytics = async () => {
+    try {
+      toast.loading('Recalculating analytics...', { id: 'recalc' });
+      await axios.post(`${API}/analytics/calculate`, {}, { withCredentials: true });
+      toast.success('Analytics recalculated successfully!', { id: 'recalc' });
+      fetchAdminAnalytics();
+    } catch (error) {
+      console.error('Error recalculating analytics:', error);
+      toast.error('Failed to recalculate analytics', { id: 'recalc' });
+    }
+  };
+
+  useEffect(() => {
+    fetchAdminAnalytics();
+  }, [selectedPeriod]);
+
+  // Calculate totals
+  const totals = analytics.reduce((acc, month) => ({
+    revenue: acc.revenue + month.total_revenue,
+    projects: acc.projects + month.total_projects,
+    clients: Math.max(acc.clients, month.active_clients),
+    avgProjectValue: (acc.revenue + month.total_revenue) / (acc.projects + month.total_projects) || 0
+  }), { revenue: 0, projects: 0, clients: 0, avgProjectValue: 0 });
+
+  // Prepare data for charts
+  const revenueData = analytics.map(item => ({
+    month: format(new Date(item.month_year + '-01'), 'MMM yyyy'),
+    revenue: item.total_revenue,
+    projects: item.total_projects,
+    clients: item.active_clients,
+    monthKey: item.month_year
+  })).sort((a, b) => a.monthKey.localeCompare(b.monthKey));
+
+  const latestMonth = analytics.length > 0 ? analytics[analytics.length - 1] : null;
+
+  if (loading) {
+    return (
+      <Card className="bg-gray-900/50 border-gray-700/30">
+        <CardContent className="p-6">
+          <div className="text-center py-8">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400 mb-4"></div>
+            <p className="text-gray-400">Loading analytics...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-white">Business Analytics</h2>
+        <div className="flex gap-3">
+          <select
+            value={selectedPeriod}
+            onChange={(e) => setSelectedPeriod(Number(e.target.value))}
+            className="bg-gray-800 border border-gray-600 text-white rounded-md px-3 py-2"
+          >
+            <option value={6}>Last 6 months</option>
+            <option value={12}>Last 12 months</option>
+            <option value={24}>Last 24 months</option>
+          </select>
+          <Button 
+            onClick={recalculateAnalytics}
+            variant="outline"
+            size="sm"
+            className="border-gray-600 text-gray-200 hover:bg-gray-800"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Recalculate
+          </Button>
+          <Button 
+            onClick={fetchAdminAnalytics}
+            variant="outline"
+            size="sm"
+            className="border-gray-600 text-gray-200 hover:bg-gray-800"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
+      </div>
+
+      {/* Summary Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="bg-gray-900/50 border-gray-700/30">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-green-900/20 rounded-lg">
+                <DollarSign className="w-6 h-6 text-green-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-white">
+                  ${totals.revenue.toLocaleString()}
+                </p>
+                <p className="text-gray-400 text-sm">Total Revenue</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gray-900/50 border-gray-700/30">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-blue-900/20 rounded-lg">
+                <Clock className="w-6 h-6 text-blue-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-white">{totals.projects}</p>
+                <p className="text-gray-400 text-sm">Total Projects</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gray-900/50 border-gray-700/30">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-purple-900/20 rounded-lg">
+                <Users className="w-6 h-6 text-purple-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-white">{totals.clients}</p>
+                <p className="text-gray-400 text-sm">Active Clients</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gray-900/50 border-gray-700/30">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-yellow-900/20 rounded-lg">
+                <Timer className="w-6 h-6 text-yellow-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-white">
+                  ${totals.avgProjectValue.toLocaleString()}
+                </p>
+                <p className="text-gray-400 text-sm">Avg Project Value</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Monthly Revenue Chart */}
+      <Card className="bg-gray-900/50 border-gray-700/30">
+        <CardHeader>
+          <CardTitle className="text-white">Monthly Revenue Trend</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {revenueData.length > 0 ? (
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={revenueData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis 
+                    dataKey="month" 
+                    stroke="#9ca3af"
+                    fontSize={12}
+                  />
+                  <YAxis 
+                    stroke="#9ca3af"
+                    fontSize={12}
+                    tickFormatter={(value) => `$${value.toLocaleString()}`}
+                  />
+                  <Tooltip 
+                    contentStyle={{
+                      backgroundColor: '#1f2937',
+                      border: '1px solid #374151',
+                      borderRadius: '8px',
+                      color: '#ffffff'
+                    }}
+                    formatter={(value, name) => {
+                      if (name === 'revenue') return [`$${value.toLocaleString()}`, 'Revenue'];
+                      return [value, name];
+                    }}
+                  />
+                  <Legend />
+                  <Line 
+                    type="monotone" 
+                    dataKey="revenue" 
+                    stroke="#10b981" 
+                    strokeWidth={3}
+                    dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }}
+                    name="Revenue"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="h-80 flex items-center justify-center">
+              <p className="text-gray-400">No revenue data available</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Projects and Clients Chart */}
+      <Card className="bg-gray-900/50 border-gray-700/30">
+        <CardHeader>
+          <CardTitle className="text-white">Projects & Clients Trend</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {revenueData.length > 0 ? (
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={revenueData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis 
+                    dataKey="month" 
+                    stroke="#9ca3af"
+                    fontSize={12}
+                  />
+                  <YAxis 
+                    stroke="#9ca3af"
+                    fontSize={12}
+                  />
+                  <Tooltip 
+                    contentStyle={{
+                      backgroundColor: '#1f2937',
+                      border: '1px solid #374151',
+                      borderRadius: '8px',
+                      color: '#ffffff'
+                    }}
+                  />
+                  <Legend />
+                  <Line 
+                    type="monotone" 
+                    dataKey="projects" 
+                    stroke="#3b82f6" 
+                    strokeWidth={3}
+                    dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
+                    name="Projects"
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="clients" 
+                    stroke="#f59e0b" 
+                    strokeWidth={3}
+                    dot={{ fill: '#f59e0b', strokeWidth: 2, r: 4 }}
+                    name="Active Clients"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="h-80 flex items-center justify-center">
+              <p className="text-gray-400">No projects data available</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Latest Month Details */}
+      {latestMonth && (
+        <Card className="bg-gray-900/50 border-gray-700/30">
+          <CardHeader>
+            <CardTitle className="text-white">
+              Latest Month Details ({format(new Date(latestMonth.month_year + '-01'), 'MMMM yyyy')})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-gray-800/30 p-4 rounded-lg">
+                <p className="text-gray-400 text-sm">Revenue</p>
+                <p className="text-2xl font-bold text-green-400">
+                  ${latestMonth.total_revenue.toLocaleString()}
+                </p>
+              </div>
+              <div className="bg-gray-800/30 p-4 rounded-lg">
+                <p className="text-gray-400 text-sm">Projects</p>
+                <p className="text-2xl font-bold text-blue-400">
+                  {latestMonth.total_projects}
+                </p>
+              </div>
+              <div className="bg-gray-800/30 p-4 rounded-lg">
+                <p className="text-gray-400 text-sm">New Clients</p>
+                <p className="text-2xl font-bold text-purple-400">
+                  {latestMonth.new_clients}
+                </p>
+              </div>
+              <div className="bg-gray-800/30 p-4 rounded-lg">
+                <p className="text-gray-400 text-sm">Completion Rate</p>
+                <p className="text-2xl font-bold text-yellow-400">
+                  {latestMonth.project_completion_rate.toFixed(1)}%
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+};
+
 // Client Analytics Dashboard Component
 const ClientAnalyticsDashboard = ({ user }) => {
   const [analytics, setAnalytics] = useState(null);
