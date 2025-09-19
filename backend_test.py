@@ -1553,6 +1553,25 @@ def main():
     test_results.append(tester.test_admin_export_users_csv())
     test_results.append(tester.test_admin_export_users_pdf())
     
+    # NEW USER MANAGEMENT DELETE FUNCTIONALITY TESTS
+    print("\n🗑️  USER MANAGEMENT DELETE TESTS (PRIMARY FOCUS)")
+    print("-" * 50)
+    test_results.append(tester.test_create_test_client_users())
+    test_results.append(tester.test_single_user_delete_success())
+    test_results.append(tester.test_single_user_delete_nonexistent())
+    test_results.append(tester.test_single_user_delete_admin_account())
+    test_results.append(tester.test_single_user_delete_self())
+    test_results.append(tester.test_bulk_user_delete_success())
+    test_results.append(tester.test_bulk_user_delete_mixed_scenario())
+    test_results.append(tester.test_verify_cascading_deletes())
+    test_results.append(tester.test_user_delete_unauthorized())
+    
+    # CHAT SYSTEM VERIFICATION TESTS (SECONDARY FOCUS)
+    print("\n💬 CHAT SYSTEM VERIFICATION TESTS (SECONDARY FOCUS)")
+    print("-" * 50)
+    test_results.append(tester.test_chat_system_basic_functionality())
+    test_results.append(tester.test_chat_file_upload_still_works())
+    
     # Milestone tests
     test_results.append(tester.test_create_milestone())
     test_results.append(tester.test_get_milestones())
