@@ -653,6 +653,13 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
   const fetchMessages = async () => {
     if (!recipientId) return;
     
+    // Debounce rapid successive calls (minimum 1 second between fetches)
+    const now = Date.now();
+    if (now - lastFetchTime.current < 1000) {
+      return;
+    }
+    lastFetchTime.current = now;
+    
     // Don't fetch if already loading to prevent multiple simultaneous requests
     if (loading) return;
     
