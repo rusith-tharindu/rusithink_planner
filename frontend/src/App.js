@@ -261,7 +261,7 @@ const Login = () => {
                   <Button
                     onClick={() => setShowAdminLogin(true)}
                     variant="outline"
-                    className="w-full border-slate-600 text-slate-200 hover:bg-slate-800"
+                    className="w-full border-yellow-500 text-yellow-500 hover:bg-yellow-500 hover:text-black"
                     size="lg"
                   >
                     <Shield className="w-5 h-5 mr-2" />
