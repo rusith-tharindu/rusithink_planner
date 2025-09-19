@@ -139,15 +139,18 @@ backend:
 
   - task: "Project Milestones API"
     implemented: true
-    working: "NA"
+    working: true
     file: "server.py"
     stuck_count: 0
     priority: "medium"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Milestone endpoints exist, need testing for timeline integration"
+      - working: true
+        agent: "testing"
+        comment: "✅ Project milestone endpoints working correctly. GET /api/tasks/{task_id}/milestones returns milestones properly. POST /api/tasks/{task_id}/milestones creates milestones successfully. Proper 404 error for non-existent tasks. Admin-only access control working."
 
 frontend:
   - task: "Admin User Management Table UI"
