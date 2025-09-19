@@ -9,7 +9,7 @@ import json
 from datetime import datetime, timedelta
 
 class ChatDebugTester:
-    def __init__(self, base_url="https://rusithink-manage.preview.emergentagent.com"):
+    def __init__(self, base_url="https://rusithink-planner.preview.emergentagent.com"):
         self.base_url = base_url
         self.api_url = f"{base_url}/api"
         self.admin_cookies = None
