@@ -1237,6 +1237,17 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
   // For admin in chat manager: recipient should be the selected client (adminUserId holds client ID)
   const recipientId = adminUserId;
 
+  // Add debugging
+  useEffect(() => {
+    console.log('ChatSystem initialized:', {
+      userRole: user.role,
+      userId: user.id,
+      adminUserId,
+      recipientId,
+      taskId
+    });
+  }, [user.role, user.id, adminUserId, recipientId, taskId]);
+
   const handleScroll = () => {
     if (messagesContainerRef.current) {
       const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
