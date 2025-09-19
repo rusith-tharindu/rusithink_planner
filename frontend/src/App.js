@@ -60,6 +60,11 @@ const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     checkAuth();
+    
+    // Request notification permission for chat notifications
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
   }, []);
 
   return (
