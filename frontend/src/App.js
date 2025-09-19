@@ -218,9 +218,9 @@ const Login = () => {
           </p>
         </div>
 
-        <Card className="bg-slate-900/50 border-slate-700/30">
+        <Card className="bg-gray-900 border-gold-500/30 shadow-2xl">
           <CardHeader>
-            <CardTitle className="text-slate-100">
+            <CardTitle className="text-white">
               {showRegister ? 'Sign Up for RusiThink' : 'Sign In to RusiThink'}
             </CardTitle>
             <CardDescription className="text-slate-400">
