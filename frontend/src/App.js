@@ -753,19 +753,19 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
   }
 
   return (
-    <div className="flex flex-col h-96 bg-slate-900/50 rounded-lg border border-slate-700/30">
+    <div className="flex flex-col h-96 bg-gray-900/50 rounded-lg border border-gray-700/30">
       {/* Chat Header */}
-      <div className="p-4 border-b border-slate-700/30">
-        <h3 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
-          <MessageSquare className="w-5 h-5 text-blue-400" />
+      <div className="p-4 border-b border-gray-700/30">
+        <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+          <MessageSquare className="w-5 h-5 text-yellow-400" />
           {taskId ? 'Project Chat' : 'General Chat'}
         </h3>
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-gray-400">
           {user.role === 'admin' ? 'Chat with client' : 'Chat with admin'}
         </p>
         <div className="flex items-center gap-2 mt-1">
           <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-          <span className="text-xs text-slate-500">Real-time chat</span>
+          <span className="text-xs text-gray-500">Real-time chat</span>
         </div>
       </div>
 
@@ -774,12 +774,12 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
         {loading ? (
           <div className="text-center py-8">
             <div className="loading-spinner mx-auto mb-4"></div>
-            <p className="text-slate-400">Loading messages...</p>
+            <p className="text-gray-400">Loading messages...</p>
           </div>
         ) : messages.length === 0 ? (
           <div className="text-center py-8">
-            <MessageSquare className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-            <p className="text-slate-400">No messages yet. Start the conversation!</p>
+            <MessageSquare className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+            <p className="text-gray-400">No messages yet. Start the conversation!</p>
           </div>
         ) : (
           messages.map((message) => (
@@ -790,8 +790,8 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
               <div
                 className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
                   message.sender_id === user.id
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-slate-800 text-slate-100'
+                    ? 'bg-yellow-600 text-black'
+                    : 'bg-gray-800 text-white'
                 }`}
               >
                 <div className="flex items-center gap-2 mb-1">
@@ -813,7 +813,9 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
                       href={`${BACKEND_URL}${message.file_url}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-blue-300 hover:text-blue-200 underline"
+                      className={`flex items-center gap-2 underline ${
+                        message.sender_id === user.id ? 'text-black hover:text-gray-800' : 'text-yellow-300 hover:text-yellow-200'
+                      }`}
                     >
                       {message.file_name?.toLowerCase().endsWith('.pdf') ? (
                         <FileText className="w-4 h-4" />
@@ -851,13 +853,13 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
       </div>
 
       {/* Message Input */}
-      <div className="p-4 border-t border-slate-700/30">
+      <div className="p-4 border-t border-gray-700/30">
         <div className="flex gap-2">
           <Input
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             placeholder="Type your message..."
-            className="flex-1 bg-slate-800 border-slate-600 text-slate-100"
+            className="flex-1 bg-gray-800 border-gray-600 text-white focus:border-yellow-500 focus:ring-yellow-500"
             onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
           />
           <input
@@ -872,7 +874,7 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
             disabled={uploading}
             variant="outline"
             size="sm"
-            className="border-slate-600 text-slate-200 hover:bg-slate-700"
+            className="border-gray-600 text-gray-200 hover:bg-gray-800"
             title="Upload file (PNG, JPG, PDF, HEIC, CSV - Max 16MB)"
           >
             {uploading ? <div className="loading-spinner w-4 h-4" /> : <Paperclip className="w-4 h-4" />}
@@ -880,12 +882,12 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
           <Button
             onClick={sendMessage}
             disabled={!newMessage.trim()}
-            className="bg-blue-600 hover:bg-blue-700"
+            className="bg-yellow-600 hover:bg-yellow-700 text-black font-semibold"
           >
             <Send className="w-4 h-4" />
           </Button>
         </div>
-        <p className="text-xs text-slate-500 mt-1">
+        <p className="text-xs text-gray-500 mt-1">
           Supported files: PNG, JPG, PDF, HEIC, CSV (Max 16MB)
         </p>
       </div>
