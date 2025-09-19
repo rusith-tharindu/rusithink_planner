@@ -1008,33 +1008,44 @@ async def get_chat_messages(
     
     try:
         # Build query filter based on user role and parameters
-        if user.role == UserRole.ADMIN and client_id:
-            # Admin viewing conversation with specific client
-            message_filter = {
-                "$or": [
-                    {"sender_id": user.id, "recipient_id": client_id},
-                    {"sender_id": client_id, "recipient_id": user.id}
-                ]
-            }
-            if task_id:
-                message_filter["task_id"] = task_id
-        elif task_id:
-            # Get messages for specific task (user must be involved)
-            message_filter = {
-                "task_id": task_id,
-                "$or": [
-                    {"sender_id": user.id},
-                    {"recipient_id": user.id}
-                ]
-            }
+        if user.role == UserRole.ADMIN:
+            if client_id:
+                # Admin viewing conversation with specific client
+                message_filter = {
+                    "$or": [
+                        {"sender_id": user.id, "recipient_id": client_id},
+                        {"sender_id": client_id, "recipient_id": user.id}
+                    ]
+                }
+            else:
+                # Admin viewing all their messages
+                message_filter = {
+                    "$or": [
+                        {"sender_id": user.id},
+                        {"recipient_id": user.id}
+                    ]
+                }
         else:
-            # Get all messages for user (general chat)
+            # CLIENT: Get all messages between client and admin
+            # Find admin user
+            admin_user = await db.users.find_one({"role": "admin"})
+            if not admin_user:
+                raise HTTPException(status_code=404, detail="Admin user not found")
+            
+            admin_user = parse_from_mongo(admin_user)
+            admin_id = admin_user["id"]
+            
+            # Get conversation between client and admin
             message_filter = {
                 "$or": [
-                    {"sender_id": user.id},
-                    {"recipient_id": user.id}
+                    {"sender_id": user.id, "recipient_id": admin_id},
+                    {"sender_id": admin_id, "recipient_id": user.id}
                 ]
             }
+        
+        # Add task filter if specified
+        if task_id:
+            message_filter["task_id"] = task_id
         
         # Get messages
         messages = await db.chat_messages.find(message_filter).sort("created_at", -1).limit(limit).to_list(limit)
