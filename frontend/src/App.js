@@ -1842,10 +1842,9 @@ const Dashboard = () => {
   const fetchAdminUser = async () => {
     if (isClient) {
       try {
-        // Get admin user for chat
-        const response = await axios.get(`${API}/admin/users`, { withCredentials: true });
-        const admin = response.data.find(u => u.role === 'admin');
-        setAdminUser(admin);
+        // Get admin user info for chat
+        const response = await axios.get(`${API}/chat/admin-info`, { withCredentials: true });
+        setAdminUser(response.data);
       } catch (error) {
         console.error('Error fetching admin user:', error);
       }
