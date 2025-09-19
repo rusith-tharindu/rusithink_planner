@@ -945,8 +945,17 @@ async def upload_chat_file(
     
     try:
         # Validate file type and size
-        if file.size > 10 * 1024 * 1024:  # 10MB limit
-            raise HTTPException(status_code=400, detail="File too large (max 10MB)")
+        if file.size > 16 * 1024 * 1024:  # 16MB limit
+            raise HTTPException(status_code=400, detail="File too large (max 16MB)")
+        
+        # Validate file format
+        allowed_extensions = {'.pdf', '.png', '.jpg', '.jpeg', '.heic', '.csv'}
+        file_ext = Path(file.filename).suffix.lower()
+        if file_ext not in allowed_extensions:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"File type not allowed. Supported formats: {', '.join(allowed_extensions)}"
+            )
         
         # Generate unique filename
         file_ext = Path(file.filename).suffix
