@@ -788,9 +788,8 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
   }, [recipientId, taskId]);
 
   useEffect(() => {
-    // Only scroll to bottom if not loading and we actually have messages
-    // Also add a small delay to ensure DOM is fully rendered
-    if (!loading && messages.length > 0) {
+    // Only auto-scroll if we should and we're not loading
+    if (!loading && messages.length > 0 && shouldAutoScroll.current) {
       const timeoutId = setTimeout(() => {
         scrollToBottom();
       }, 100);
