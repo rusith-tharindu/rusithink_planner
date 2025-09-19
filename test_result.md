@@ -493,6 +493,12 @@ test_plan:
   blocked_by_backend_url:
     - "Admin User Management Table UI"
     - "Client Registration Form with Address"
+  authentication_test_results:
+    - admin_login: "FAILED - CORS blocked API calls to old domain"
+    - registration: "FAILED - CORS blocked API calls to old domain"
+    - oauth_redirect: "SUCCESS - Correctly redirects to auth.emergentagent.com with custom domain"
+    - ui_elements: "SUCCESS - All forms render correctly with address field"
+    - network_analysis: "CRITICAL - 5 API calls to old domain, 0 to correct domain"
 
 agent_communication:
   - agent: "main"
