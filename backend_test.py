@@ -1264,6 +1264,250 @@ class ProjectPlannerAPITester:
         
         return success
 
+    # ========== CHAT SYSTEM VERIFICATION TESTS ==========
+    
+    def test_chat_system_basic_functionality(self):
+        """Test that basic chat functionality still works after optimization"""
+        if not self.admin_cookies:
+            print("❌ No admin session available for chat system test")
+            return False
+        
+        print(f"\n🔍 Testing Chat System Basic Functionality...")
+        
+        # Create a test client for chat
+        test_user_data = {
+            "email": "chat_test@example.com",
+            "password": "testpass123",
+            "first_name": "Chat",
+            "last_name": "Test",
+            "phone": "+1234567897",
+            "company_name": "Chat Test Company"
+        }
+        
+        success, response, client_cookies = self.run_test(
+            "Create Client for Chat Test",
+            "POST",
+            "auth/register",
+            200,
+            data=test_user_data
+        )
+        
+        if not success:
+            print("❌ Could not create test client for chat test")
+            return False
+        
+        client_user_id = response['user']['id']
+        print(f"   ✅ Created test client: {client_user_id}")
+        
+        # Get admin info for chat
+        success, admin_info, _ = self.run_test(
+            "Get Admin Info for Chat",
+            "GET",
+            "chat/admin-info",
+            200,
+            cookies=client_cookies
+        )
+        
+        if not success:
+            print("❌ Could not get admin info for chat")
+            return False
+        
+        admin_id = admin_info['id']
+        print(f"   ✅ Got admin info: {admin_info['name']}")
+        
+        # Test 1: Admin sends message to client
+        admin_message_data = {
+            "content": "Hello from admin - chat system test",
+            "recipient_id": client_user_id
+        }
+        
+        success, admin_msg_response, _ = self.run_test(
+            "Admin Sends Message to Client",
+            "POST",
+            "chat/messages",
+            200,
+            data=admin_message_data,
+            cookies=self.admin_cookies
+        )
+        
+        if not success:
+            print("❌ Admin could not send message to client")
+            return False
+        
+        print(f"   ✅ Admin message sent: {admin_msg_response.get('content')[:30]}...")
+        
+        # Test 2: Client retrieves messages (should see admin message)
+        success, client_messages, _ = self.run_test(
+            "Client Retrieves Messages",
+            "GET",
+            "chat/messages",
+            200,
+            cookies=client_cookies
+        )
+        
+        if not success:
+            print("❌ Client could not retrieve messages")
+            return False
+        
+        admin_message_found = False
+        for msg in client_messages:
+            if msg.get('sender_id') == admin_id and 'chat system test' in msg.get('content', ''):
+                admin_message_found = True
+                break
+        
+        if admin_message_found:
+            print("   ✅ Client can see admin message")
+        else:
+            print("   ❌ Client cannot see admin message")
+            return False
+        
+        # Test 3: Client sends reply to admin
+        client_message_data = {
+            "content": "Reply from client - chat system test",
+            "recipient_id": admin_id
+        }
+        
+        success, client_msg_response, _ = self.run_test(
+            "Client Sends Reply to Admin",
+            "POST",
+            "chat/messages",
+            200,
+            data=client_message_data,
+            cookies=client_cookies
+        )
+        
+        if not success:
+            print("❌ Client could not send reply to admin")
+            return False
+        
+        print(f"   ✅ Client reply sent: {client_msg_response.get('content')[:30]}...")
+        
+        # Test 4: Admin retrieves messages with client_id parameter
+        success, admin_messages, _ = self.run_test(
+            "Admin Retrieves Client Conversation",
+            "GET",
+            f"chat/messages?client_id={client_user_id}",
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        if not success:
+            print("❌ Admin could not retrieve client conversation")
+            return False
+        
+        client_reply_found = False
+        for msg in admin_messages:
+            if msg.get('sender_id') == client_user_id and 'Reply from client' in msg.get('content', ''):
+                client_reply_found = True
+                break
+        
+        if client_reply_found:
+            print("   ✅ Admin can see client reply")
+        else:
+            print("   ❌ Admin cannot see client reply")
+            return False
+        
+        # Clean up test client
+        self.run_test(
+            "Cleanup Chat Test Client",
+            "DELETE",
+            f"admin/users/{client_user_id}",
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        print("   ✅ Chat system basic functionality verified")
+        return True
+
+    def test_chat_file_upload_still_works(self):
+        """Test that file upload functionality still works in chat system"""
+        if not self.admin_cookies:
+            print("❌ No admin session available for chat file upload test")
+            return False
+        
+        print(f"\n🔍 Testing Chat File Upload After Optimization...")
+        
+        # Create a test client
+        test_user_data = {
+            "email": "file_test@example.com",
+            "password": "testpass123",
+            "first_name": "File",
+            "last_name": "Test",
+            "phone": "+1234567896",
+            "company_name": "File Test Company"
+        }
+        
+        success, response, client_cookies = self.run_test(
+            "Create Client for File Test",
+            "POST",
+            "auth/register",
+            200,
+            data=test_user_data
+        )
+        
+        if not success:
+            print("❌ Could not create test client for file test")
+            return False
+        
+        client_user_id = response['user']['id']
+        
+        # Test file upload from admin to client
+        import tempfile
+        import os
+        
+        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as temp_file:
+            # Create a minimal PNG file
+            temp_file.write(b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\tpHYs\x00\x00\x0b\x13\x00\x00\x0b\x13\x01\x00\x9a\x9c\x18\x00\x00\x00\nIDATx\x9cc\xf8\x00\x00\x00\x01\x00\x01\x00\x00\x00\x00IEND\xaeB`\x82')
+            temp_file_path = temp_file.name
+        
+        url = f"{self.api_url}/chat/upload"
+        print(f"   Testing file upload to: {url}")
+        
+        try:
+            with open(temp_file_path, 'rb') as f:
+                files = {'file': ('test_chat.png', f, 'image/png')}
+                data = {
+                    'recipient_id': client_user_id,
+                    'content': 'Test file upload after optimization'
+                }
+                
+                response = requests.post(url, files=files, data=data, cookies=self.admin_cookies)
+                self.tests_run += 1
+                
+                if response.status_code == 200:
+                    self.tests_passed += 1
+                    print(f"✅ Passed - Status: {response.status_code}")
+                    try:
+                        response_data = response.json()
+                        print(f"   ✅ File uploaded: {response_data.get('file_name')}")
+                        print(f"   ✅ Message type: {response_data.get('message_type')}")
+                        
+                        # Clean up test client
+                        self.run_test(
+                            "Cleanup File Test Client",
+                            "DELETE",
+                            f"admin/users/{client_user_id}",
+                            200,
+                            cookies=self.admin_cookies
+                        )
+                        
+                        return True
+                    except:
+                        return True
+                else:
+                    print(f"❌ Failed - Expected 200, got {response.status_code}")
+                    return False
+                    
+        except Exception as e:
+            print(f"❌ Failed - Error: {str(e)}")
+            return False
+        finally:
+            # Clean up temp file
+            try:
+                os.unlink(temp_file_path)
+            except:
+                pass
+
 def main():
     print("🚀 Starting Project Planner Authentication & Authorization Tests")
     print("=" * 70)
