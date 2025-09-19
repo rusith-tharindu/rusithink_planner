@@ -3100,9 +3100,15 @@ const AdminUserManagement = ({ isVisible, onClose }) => {
                             {user.role !== 'admin' && (
                               <Button 
                                 size="sm" 
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  console.log('Delete button clicked for user:', user.id, user.name);
                                   if (window.confirm(`Are you sure you want to delete ${user.name}? This action cannot be undone.`)) {
+                                    console.log('User confirmed deletion, calling deleteUser function');
                                     deleteUser(user.id);
+                                  } else {
+                                    console.log('User cancelled deletion');
                                   }
                                 }}
                                 variant="ghost"
