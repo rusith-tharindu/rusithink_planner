@@ -453,6 +453,18 @@ frontend:
         agent: "testing"
         comment: "🎉 CRITICAL SCROLL BEHAVIOR FIX SUCCESSFULLY VERIFIED! All requested scroll behavior tests passed: 1) Page Scroll Test ✅ - Main page scrolling works normally without interference from chat system 2) Chat Container Scroll Test ✅ - Chat messages scroll ONLY within their container (messagesContainerRef with overflow-y-auto), NOT affecting main page 3) Real-time Message Test ✅ - No automatic page scrolling detected during 10-second monitoring period 4) User Interaction Test ✅ - All dashboard interactions work normally without unwanted scrolling. The implementation uses proper scroll isolation with messagesContainerRef, shouldAutoScroll ref for controlled auto-scroll behavior, and handleScroll function to manage scroll state. The critical issues reported in the review request have been completely resolved."
 
+  - task: "Frontend Backend URL Configuration Fix"
+    implemented: false
+    working: false
+    file: "App.js, .env, build process"
+    stuck_count: 1
+    priority: "critical"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "testing"
+        comment: "🚨 CRITICAL BACKEND URL ISSUE IDENTIFIED! Despite .env file correctly showing REACT_APP_BACKEND_URL=https://rusithink.online, the frontend JavaScript bundle is STILL making API calls to the old URL https://rusithink-planner.emergent.host. Comprehensive authentication testing reveals: ❌ All authentication methods fail due to CORS errors (admin login, registration, session validation) ❌ 5 CORS errors detected from wrong domain API calls ❌ 0 API requests going to correct domain (rusithink.online) ❌ 5 API requests going to wrong domain (rusithink-planner.emergent.host) ✅ UI elements render correctly ✅ OAuth redirect works with correct domain. ROOT CAUSE: Environment variable not being loaded properly in JavaScript bundle - suggests build/deployment issue, caching problem, or hardcoded URL. CRITICAL: Frontend build needs to be regenerated/redeployed with correct backend URL configuration before any authentication functionality can work on custom domain."
+
 metadata:
   created_by: "main_agent"
   version: "1.0"
