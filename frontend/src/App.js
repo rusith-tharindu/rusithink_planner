@@ -657,6 +657,13 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
     }
   };
 
+  const scrollToBottom = () => {
+    // Use the messages container ref for precise scrolling
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
+  };
+
   const fetchMessages = async () => {
     if (!recipientId) return;
     
