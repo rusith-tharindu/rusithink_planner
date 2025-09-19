@@ -146,7 +146,8 @@ const Login = () => {
     first_name: '',
     last_name: '',
     phone: '',
-    company_name: ''
+    company_name: '',
+    address: ''
   });
 
   const handleOAuthLogin = () => {
