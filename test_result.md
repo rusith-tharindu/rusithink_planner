@@ -254,6 +254,54 @@ backend:
         agent: "testing"
         comment: "✅ Project milestone endpoints working correctly. GET /api/tasks/{task_id}/milestones returns milestones properly. POST /api/tasks/{task_id}/milestones creates milestones successfully. Proper 404 error for non-existent tasks. Admin-only access control working."
 
+  - task: "Analytics System - Client Analytics Endpoints"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Client Analytics Endpoint (GET /api/analytics/client) working perfectly. Authenticated clients can retrieve their analytics with correct calculations: total projects, spending, completion rates. Analytics structure verified with all required fields (client_id, total_projects, completed_projects, pending_projects, total_spent, average_project_value, monthly_spending, project_completion_rate). Mathematical calculations verified - total spending and average project values are accurate. Admin users properly blocked from accessing client analytics (403 error). Analytics data properly calculated and stored in database."
+
+  - task: "Analytics System - Admin Analytics Endpoints"
+    implemented: true
+    working: false
+    file: "server.py"
+    stuck_count: 1
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: false
+        agent: "testing"
+        comment: "❌ Admin Analytics Endpoint (GET /api/analytics/admin) partially working. Default 12 months and 6 months parameters work correctly, returning proper monthly revenue calculations and business metrics. However, 24 months parameter fails with 500 error: 'month must be in 1..12' - indicates date calculation bug when going back more than 12 months. Admin analytics structure verified with all required fields (month_year, total_revenue, total_projects, completed_projects, pending_projects, new_clients, active_clients, average_project_value, project_completion_rate, revenue_by_client). Client users properly blocked from accessing admin analytics (403 error). CRITICAL ISSUE: Date calculation logic needs fix for month parameters > 12."
+
+  - task: "Analytics System - Analytics Calculation Functions"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Analytics Calculation Endpoint (POST /api/analytics/calculate) working perfectly. Recalculates analytics for all clients and admin months successfully. Proper response structure with clients_processed and admin_months_processed counts. Tested with multiple clients and tasks - all analytics updated correctly. Client users properly blocked from accessing calculation endpoint (403 error). Admin-only access control working correctly. Analytics recalculation processes all existing clients and generates historical data for last 12 months."
+
+  - task: "Analytics System - Data Persistence and Accuracy"
+    implemented: true
+    working: false
+    file: "server.py"
+    stuck_count: 1
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: false
+        agent: "testing"
+        comment: "❌ Analytics Data Persistence partially working. Client analytics are properly calculated and stored in client_analytics collection. Admin analytics are calculated and stored in admin_analytics collection. Monthly spending totals match overall totals correctly. However, CRITICAL ISSUE: Date parsing accuracy has problems - when creating tasks across different months, not all months appear in monthly_spending breakdown. Expected months (2025-08, 2025-07) missing from analytics, only current month (2025-09) present. This indicates the monthly analytics calculation logic may not be properly parsing task creation dates or grouping them by month. Analytics persistence works but monthly breakdown calculations need fixing."
+
 frontend:
   - task: "Admin User Management Table UI"
     implemented: false
