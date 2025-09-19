@@ -2188,6 +2188,14 @@ const Dashboard = () => {
         />
       )}
       
+      {/* Admin Chat Management Dialog */}
+      {isAdmin && (
+        <AdminChatManager 
+          isVisible={showChatManagement}
+          onClose={() => setShowChatManagement(false)}
+        />
+      )}
+      
       <Toaster 
         theme="dark"
         position="top-right"
