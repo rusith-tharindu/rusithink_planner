@@ -1474,6 +1474,12 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
           <div className="text-center py-8">
             <MessageSquare className="w-12 h-12 text-gray-600 mx-auto mb-4" />
             <p className="text-gray-400">No messages yet. Start the conversation!</p>
+            <Button 
+              onClick={fetchMessages}
+              className="mt-4 bg-yellow-600 hover:bg-yellow-700 text-black font-semibold"
+            >
+              Refresh Messages
+            </Button>
           </div>
         ) : (
           messages.map((message) => (
