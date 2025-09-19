@@ -344,6 +344,18 @@ backend:
         agent: "testing"
         comment: "🎉 ADMIN MANAGEMENT FUNCTIONALITY VERIFICATION: Chat delete functionality CONFIRMED WORKING in comprehensive focused testing. Single message delete, conversation delete, and bulk message delete all working perfectly. Mixed scenario handling operational, proper authentication and authorization enforced. Ready for production use."
 
+  - task: "Chat Export as PDF Functionality"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "🎉 CHAT EXPORT AS PDF FUNCTIONALITY VERIFIED! Comprehensive testing of GET /api/admin/chat/export/{client_id} shows the endpoint now returns PDF format as requested in the review. PDF generation working perfectly with proper formatting, complete chat history included, proper headers and content structure. Admin authentication required and working correctly. File downloads with correct PDF content-type and valid PDF signature. Ready for production use."
+
 frontend:
   - task: "Admin User Management Table UI"
     implemented: false
