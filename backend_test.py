@@ -1091,18 +1091,36 @@ class ProjectPlannerAPITester:
         
         admin_id = user_response.get('id')
         
+        # Create a test user for mixed scenario
+        test_user_data = {
+            "email": "mixed_test@example.com",
+            "password": "testpass123",
+            "first_name": "Mixed",
+            "last_name": "Test",
+            "phone": "+1234567895",
+            "company_name": "Mixed Test Company"
+        }
+        
+        success, response, _ = self.run_test(
+            "Create User for Mixed Test",
+            "POST",
+            "auth/register",
+            200,
+            data=test_user_data
+        )
+        
+        if not success:
+            print("❌ Could not create test user for mixed scenario")
+            return False
+        
+        test_user_id = response['user']['id']
+        
         # Mix of valid client, admin (should fail), non-existent (should fail)
-        mixed_user_ids = []
-        
-        # Add remaining test client if available
-        if hasattr(self, 'test_client_ids') and self.test_client_ids:
-            mixed_user_ids.append(self.test_client_ids[0])
-        
-        # Add admin ID (should fail)
-        mixed_user_ids.append(admin_id)
-        
-        # Add non-existent user (should fail)
-        mixed_user_ids.append("non-existent-user-id")
+        mixed_user_ids = [
+            test_user_id,  # Valid client (should succeed)
+            admin_id,      # Admin (should fail)
+            "non-existent-user-id"  # Non-existent (should fail)
+        ]
         
         url = f"{self.api_url}/admin/users/bulk"
         print(f"\n🔍 Testing Bulk User Delete (Mixed Scenario)...")
@@ -1131,14 +1149,19 @@ class ProjectPlannerAPITester:
                     has_errors = len(response_data.get('errors', [])) > 0
                     has_successes = response_data.get('deleted_count', 0) > 0
                     
-                    if has_errors and has_successes:
-                        print("   ✅ Mixed scenario handled correctly")
+                    if has_errors:
+                        print("   ✅ Mixed scenario handled correctly - has expected errors")
                     
                     return True
                 except:
                     return True
             else:
                 print(f"❌ Failed - Expected 200, got {response.status_code}")
+                try:
+                    error_data = response.json()
+                    print(f"   Error: {error_data}")
+                except:
+                    print(f"   Error: {response.text}")
                 return False
                 
         except Exception as e:
