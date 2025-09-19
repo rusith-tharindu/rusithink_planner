@@ -440,7 +440,188 @@ const Login = () => {
   );
 };
 
-// Chat Component
+// Admin Chat Manager Component
+const AdminChatManager = ({ isVisible, onClose }) => {
+  const [conversations, setConversations] = useState([]);
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const fetchConversations = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get(`${API}/admin/chat/conversations`, { withCredentials: true });
+      setConversations(response.data);
+    } catch (error) {
+      console.error('Error fetching conversations:', error);
+      toast.error('Failed to load conversations');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const exportClientChat = async (clientId, clientName) => {
+    try {
+      const response = await axios.get(`${API}/admin/chat/export/${clientId}`, { 
+        withCredentials: true,
+        responseType: 'blob'
+      });
+      
+      const blob = new Blob([response.data], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `chat_export_${clientName}_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success(`Chat exported for ${clientName}`);
+    } catch (error) {
+      console.error('Error exporting chat:', error);
+      toast.error('Failed to export chat');
+    }
+  };
+
+  useEffect(() => {
+    if (isVisible) {
+      fetchConversations();
+      // Refresh conversations every 30 seconds
+      const interval = setInterval(fetchConversations, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [isVisible]);
+
+  if (!isVisible) return null;
+
+  return (
+    <Dialog open={isVisible} onOpenChange={onClose}>
+      <DialogContent className="bg-slate-900 border-slate-700 text-slate-100 max-w-6xl max-h-[90vh] overflow-hidden">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-3">
+            <MessageSquare className="w-6 h-6 text-blue-400" />
+            Client Chat Management
+          </DialogTitle>
+          <DialogDescription className="text-slate-400">
+            View and manage conversations with all clients
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="flex h-[70vh] gap-4">
+          {/* Conversations List */}
+          <div className="w-1/3 border-r border-slate-700 pr-4">
+            <h3 className="text-lg font-semibold text-slate-100 mb-4">Client Conversations</h3>
+            
+            {loading ? (
+              <div className="text-center py-8">
+                <div className="loading-spinner mx-auto mb-4"></div>
+                <p className="text-slate-400">Loading conversations...</p>
+              </div>
+            ) : conversations.length === 0 ? (
+              <div className="text-center py-8">
+                <MessageSquare className="w-12 h-12 text-slate-600 mx-auto mb-4" />
+                <p className="text-slate-400">No conversations yet</p>
+              </div>
+            ) : (
+              <div className="space-y-2 overflow-y-auto max-h-full">
+                {conversations.map((conv) => (
+                  <Card 
+                    key={conv.client_id}
+                    className={`cursor-pointer transition-all ${
+                      selectedClient?.client_id === conv.client_id
+                        ? 'bg-blue-900/20 border-blue-700/30'
+                        : 'bg-slate-800/30 border-slate-700/30 hover:bg-slate-800/50'
+                    }`}
+                    onClick={() => setSelectedClient(conv)}
+                  >
+                    <CardContent className="p-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="font-medium text-slate-100">{conv.client_name}</h4>
+                            {conv.unread_count > 0 && (
+                              <Badge className="bg-orange-600 text-white text-xs">
+                                {conv.unread_count}
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-400">{conv.client_email}</p>
+                          {conv.client_company && (
+                            <p className="text-xs text-slate-500">{conv.client_company}</p>
+                          )}
+                          {conv.last_message && (
+                            <p className="text-xs text-slate-400 mt-2 truncate">
+                              {conv.last_message}...
+                            </p>
+                          )}
+                          {conv.last_message_time && (
+                            <p className="text-xs text-slate-500 mt-1">
+                              {format(new Date(conv.last_message_time), 'MMM dd, HH:mm')}
+                            </p>
+                          )}
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            exportClientChat(conv.client_id, conv.client_name);
+                          }}
+                          className="text-green-400 hover:text-green-300 hover:bg-green-900/20"
+                          title="Export chat history"
+                        >
+                          <Download className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Chat Interface */}
+          <div className="flex-1">
+            {selectedClient ? (
+              <div className="h-full">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-100">
+                      Chat with {selectedClient.client_name}
+                    </h3>
+                    <p className="text-sm text-slate-400">{selectedClient.client_email}</p>
+                  </div>
+                  <Button
+                    onClick={() => exportClientChat(selectedClient.client_id, selectedClient.client_name)}
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Export Chat
+                  </Button>
+                </div>
+                
+                <ChatSystem 
+                  user={{ id: 'admin', name: 'Admin', role: 'admin' }}
+                  adminUserId={selectedClient.client_id}
+                  key={selectedClient.client_id} // Force re-render when client changes
+                />
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-full text-slate-400">
+                <div className="text-center">
+                  <MessageSquare className="w-16 h-16 mx-auto mb-4 text-slate-600" />
+                  <p>Select a client to view conversation</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Enhanced Chat System Component with better real-time updates
 const ChatSystem = ({ user, adminUserId, taskId = null }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
