@@ -827,6 +827,24 @@ def main():
     test_results.append(tester.test_get_tasks_as_admin())
     test_results.append(tester.test_get_task_stats_as_admin())
     test_results.append(tester.test_admin_get_all_users())
+    
+    # User management tests
+    test_results.append(tester.test_admin_update_user())
+    test_results.append(tester.test_admin_export_users_csv())
+    test_results.append(tester.test_admin_export_users_pdf())
+    
+    # Milestone tests
+    test_results.append(tester.test_create_milestone())
+    test_results.append(tester.test_get_milestones())
+    test_results.append(tester.test_get_milestones_nonexistent_task())
+    
+    # File upload tests
+    print("\n📁 FILE UPLOAD TESTS")
+    print("-" * 30)
+    test_results.append(tester.test_chat_file_upload_valid_file())
+    test_results.append(tester.test_chat_file_upload_invalid_format())
+    test_results.append(tester.test_chat_file_upload_oversized_file())
+    
     test_results.append(tester.test_delete_task_as_admin())
     
     # Protected routes without authentication
