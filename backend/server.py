@@ -1428,6 +1428,29 @@ async def admin_create_task_for_client(task_data: TaskCreate, client_email: str,
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create task: {str(e)}")
 
+@api_router.get("/chat/admin-info")
+async def get_admin_info_for_chat(request: Request):
+    """Get admin user info for chat (accessible by clients)"""
+    user = await require_auth(request)
+    
+    try:
+        # Get admin user (assuming there's only one admin)
+        admin_user = await db.users.find_one({"role": "admin"})
+        if not admin_user:
+            raise HTTPException(status_code=404, detail="Admin user not found")
+        
+        admin_user = parse_from_mongo(admin_user)
+        
+        # Return only necessary info for chat
+        return {
+            "id": admin_user["id"],
+            "name": admin_user.get("name", "Admin"),
+            "role": admin_user["role"]
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get admin info: {str(e)}")
+
 @api_router.get("/admin/chat/export/{client_id}")
 async def export_client_chat(client_id: str, request: Request):
     """Export chat messages for a specific client (admin only)"""
