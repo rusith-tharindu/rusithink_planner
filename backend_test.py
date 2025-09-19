@@ -2101,6 +2101,15 @@ def main():
     test_results.append(tester.test_verify_cascading_deletes())
     test_results.append(tester.test_user_delete_unauthorized())
     
+    # CHAT MESSAGE HISTORY AND CONVERSATION CONTINUITY TESTS (PRIMARY FOCUS)
+    print("\n🎯 CHAT MESSAGE HISTORY & CONVERSATION CONTINUITY TESTS (PRIMARY FOCUS)")
+    print("-" * 70)
+    print("Testing the specific fix for:")
+    print("❌ 'Admin message doesn't show up in client's chatbox' → Should be FIXED")
+    print("❌ 'Client's previous messages delete' → Should be FIXED")
+    test_results.append(tester.test_chat_message_history_continuity_fix())
+    test_results.append(tester.test_role_based_message_filtering())
+    
     # CHAT SYSTEM VERIFICATION TESTS (SECONDARY FOCUS)
     print("\n💬 CHAT SYSTEM VERIFICATION TESTS (SECONDARY FOCUS)")
     print("-" * 50)
