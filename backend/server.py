@@ -1339,7 +1339,7 @@ async def export_users_pdf(request: Request):
             created_date = ''
             if user.get('created_at'):
                 try:
-                    created_date = user.get('created_at').split('T')[0]
+                    created_date = str(user.get('created_at')).split('T')[0]
                 except:
                     created_date = str(user.get('created_at', ''))[:10]
             
