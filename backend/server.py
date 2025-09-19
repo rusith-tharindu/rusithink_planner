@@ -1278,7 +1278,7 @@ async def export_users_csv(request: Request):
                 'Company Name': user.get('company_name', ''),
                 'Registration Type': user.get('registration_type', 'oauth'),
                 'Role': user.get('role', 'client'),
-                'Created At': user.get('created_at', '').split('T')[0] if user.get('created_at') else ''
+                'Created At': str(user.get('created_at', '')).split('T')[0] if user.get('created_at') else ''
             })
         
         # Create DataFrame and CSV
