@@ -846,16 +846,34 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
     <div className="flex flex-col h-96 bg-gray-900/50 rounded-lg border border-gray-700/30 overflow-hidden">
       {/* Chat Header */}
       <div className="p-4 border-b border-gray-700/30 flex-shrink-0">
-        <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-          <MessageSquare className="w-5 h-5 text-yellow-400" />
-          {taskId ? 'Project Chat' : 'General Chat'}
-        </h3>
-        <p className="text-sm text-gray-400">
-          {user.role === 'admin' ? 'Chat with client' : 'Chat with admin'}
-        </p>
-        <div className="flex items-center gap-2 mt-1">
-          <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-          <span className="text-xs text-gray-500">Push notifications enabled</span>
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-yellow-400" />
+              {taskId ? 'Project Chat' : 'General Chat'}
+            </h3>
+            <p className="text-sm text-gray-400">
+              {user.role === 'admin' ? 'Chat with client' : 'Chat with admin'}
+            </p>
+            <div className="flex items-center gap-2 mt-1">
+              <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+              <span className="text-xs text-gray-500">Push notifications enabled</span>
+            </div>
+          </div>
+          <Button
+            onClick={fetchMessages}
+            variant="outline"
+            size="sm"
+            disabled={loading}
+            className="border-gray-600 text-gray-200 hover:bg-gray-800"
+            title="Refresh messages"
+          >
+            {loading ? (
+              <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400" />
+            ) : (
+              <Download className="w-4 h-4" />
+            )}
+          </Button>
         </div>
       </div>
 
