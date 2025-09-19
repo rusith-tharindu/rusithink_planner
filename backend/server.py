@@ -1595,6 +1595,97 @@ async def get_admin_info_for_chat(request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get admin info: {str(e)}")
 
+@api_router.delete("/admin/chat/message/{message_id}")
+async def delete_chat_message(message_id: str, request: Request):
+    """Delete a specific chat message (admin only)"""
+    await require_admin(request)
+    
+    try:
+        # Check if message exists
+        message = await db.chat_messages.find_one({"id": message_id})
+        if not message:
+            raise HTTPException(status_code=404, detail="Message not found")
+        
+        # Delete the message
+        result = await db.chat_messages.delete_one({"id": message_id})
+        
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Message not found")
+        
+        return {"message": "Chat message deleted successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete message: {str(e)}")
+
+@api_router.delete("/admin/chat/conversation/{client_id}")
+async def delete_chat_conversation(client_id: str, request: Request):
+    """Delete entire conversation with a client (admin only)"""
+    await require_admin(request)
+    
+    try:
+        current_user = await require_auth(request)
+        
+        # Check if client exists
+        client = await db.users.find_one({"id": client_id})
+        if not client:
+            raise HTTPException(status_code=404, detail="Client not found")
+        
+        client = parse_from_mongo(client)
+        
+        # Prevent deleting conversation with another admin
+        if client.get("role") == "admin":
+            raise HTTPException(status_code=400, detail="Cannot delete admin conversations")
+        
+        # Delete all messages between admin and this client
+        result = await db.chat_messages.delete_many({
+            "$or": [
+                {"sender_id": current_user.id, "recipient_id": client_id},
+                {"sender_id": client_id, "recipient_id": current_user.id}
+            ]
+        })
+        
+        deleted_count = result.deleted_count
+        
+        return {
+            "message": f"Conversation with {client.get('name', 'client')} deleted successfully",
+            "deleted_messages": deleted_count
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete conversation: {str(e)}")
+
+@api_router.delete("/admin/chat/bulk-delete")
+async def bulk_delete_chat_messages(message_ids: List[str], request: Request):
+    """Delete multiple chat messages (admin only)"""
+    await require_admin(request)
+    
+    try:
+        deleted_count = 0
+        errors = []
+        
+        for message_id in message_ids:
+            try:
+                result = await db.chat_messages.delete_one({"id": message_id})
+                if result.deleted_count > 0:
+                    deleted_count += 1
+                else:
+                    errors.append(f"Message {message_id} not found")
+            except Exception as e:
+                errors.append(f"Error deleting message {message_id}: {str(e)}")
+        
+        return {
+            "message": f"Deleted {deleted_count} message(s)",
+            "deleted_count": deleted_count,
+            "errors": errors
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to bulk delete messages: {str(e)}")
+
 @api_router.get("/admin/chat/export/{client_id}")
 async def export_client_chat(client_id: str, request: Request):
     """Export chat messages for a specific client (admin only)"""
