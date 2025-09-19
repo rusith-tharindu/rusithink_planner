@@ -638,6 +638,7 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
   const fileInputRef = useRef(null);
   const lastFetchTime = useRef(0);
 
