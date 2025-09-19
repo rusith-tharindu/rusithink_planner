@@ -837,6 +837,7 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
       {/* Messages */}
       <div 
         ref={messagesContainerRef}
+        onScroll={handleScroll}
         className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth"
       >
         {loading ? (
