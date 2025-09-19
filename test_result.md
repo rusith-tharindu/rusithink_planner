@@ -121,6 +121,9 @@ backend:
       - working: true
         agent: "main"
         comment: "Backend endpoints for user management, CSV/PDF export already implemented"
+      - working: true
+        agent: "testing"
+        comment: "✅ All user management APIs tested and working. GET /api/admin/users retrieves all users correctly. PUT /api/admin/users/{user_id} updates user details successfully. GET /api/admin/users/export/csv exports CSV correctly (fixed datetime formatting issue). GET /api/admin/users/export/pdf exports PDF correctly with proper headers and content."
 
   - task: "Chat System API with file upload"
     implemented: true
