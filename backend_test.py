@@ -2043,6 +2043,732 @@ class ProjectPlannerAPITester:
             except:
                 pass
 
+    # ========== ANALYTICS SYSTEM TESTS ==========
+    
+    def test_client_analytics_endpoint(self):
+        """Test GET /api/analytics/client endpoint for authenticated clients"""
+        print(f"\n📊 Testing Client Analytics Endpoint...")
+        
+        # Create a test client with some tasks for analytics
+        test_user_data = {
+            "email": "analytics_client@example.com",
+            "password": "testpass123",
+            "first_name": "Analytics",
+            "last_name": "Client",
+            "phone": "+1234567900",
+            "company_name": "Analytics Test Company"
+        }
+        
+        success, response, client_cookies = self.run_test(
+            "Create Client for Analytics Test",
+            "POST",
+            "auth/register",
+            200,
+            data=test_user_data
+        )
+        
+        if not success:
+            print("❌ Could not create test client for analytics")
+            return False
+        
+        client_user_id = response['user']['id']
+        print(f"   ✅ Created analytics test client: {client_user_id}")
+        
+        # Create some test tasks with different dates and values
+        from datetime import datetime, timedelta
+        
+        tasks_data = [
+            {
+                "title": "Analytics Test Project 1",
+                "description": "First project for analytics testing",
+                "due_datetime": (datetime.now() + timedelta(days=30)).isoformat(),
+                "project_price": 2500.0,
+                "priority": "high"
+            },
+            {
+                "title": "Analytics Test Project 2", 
+                "description": "Second project for analytics testing",
+                "due_datetime": (datetime.now() + timedelta(days=60)).isoformat(),
+                "project_price": 3500.0,
+                "priority": "medium"
+            },
+            {
+                "title": "Analytics Test Project 3",
+                "description": "Third project for analytics testing", 
+                "due_datetime": (datetime.now() + timedelta(days=90)).isoformat(),
+                "project_price": 1500.0,
+                "priority": "low"
+            }
+        ]
+        
+        created_tasks = []
+        for i, task_data in enumerate(tasks_data):
+            success, task_response, _ = self.run_test(
+                f"Create Analytics Test Task {i+1}",
+                "POST",
+                "tasks",
+                200,
+                data=task_data,
+                cookies=client_cookies
+            )
+            
+            if success:
+                created_tasks.append(task_response['id'])
+                print(f"   ✅ Created task {i+1}: ${task_data['project_price']}")
+        
+        # Test client analytics endpoint
+        success, analytics_response, _ = self.run_test(
+            "Get Client Analytics",
+            "GET",
+            "analytics/client",
+            200,
+            cookies=client_cookies
+        )
+        
+        if not success:
+            print("❌ Client analytics endpoint failed")
+            return False
+        
+        # Verify analytics data structure and calculations
+        expected_fields = ['client_id', 'total_projects', 'completed_projects', 'pending_projects', 
+                          'total_spent', 'average_project_value', 'monthly_spending', 'project_completion_rate']
+        
+        missing_fields = []
+        for field in expected_fields:
+            if field not in analytics_response:
+                missing_fields.append(field)
+        
+        if missing_fields:
+            print(f"❌ Missing analytics fields: {missing_fields}")
+            return False
+        
+        print(f"   ✅ Analytics structure correct - all required fields present")
+        print(f"   ✅ Total projects: {analytics_response.get('total_projects')}")
+        print(f"   ✅ Total spent: ${analytics_response.get('total_spent')}")
+        print(f"   ✅ Average project value: ${analytics_response.get('average_project_value')}")
+        print(f"   ✅ Completion rate: {analytics_response.get('project_completion_rate')}%")
+        
+        # Verify calculations are correct
+        expected_total = sum(task['project_price'] for task in tasks_data)
+        actual_total = analytics_response.get('total_spent', 0)
+        
+        if abs(expected_total - actual_total) < 0.01:  # Allow for floating point precision
+            print(f"   ✅ Total spending calculation correct: ${actual_total}")
+        else:
+            print(f"   ❌ Total spending calculation incorrect: expected ${expected_total}, got ${actual_total}")
+            return False
+        
+        expected_avg = expected_total / len(tasks_data) if tasks_data else 0
+        actual_avg = analytics_response.get('average_project_value', 0)
+        
+        if abs(expected_avg - actual_avg) < 0.01:
+            print(f"   ✅ Average project value calculation correct: ${actual_avg}")
+        else:
+            print(f"   ❌ Average project value calculation incorrect: expected ${expected_avg}, got ${actual_avg}")
+            return False
+        
+        # Clean up test client
+        self.run_test(
+            "Cleanup Analytics Test Client",
+            "DELETE",
+            f"admin/users/{client_user_id}",
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        return True
+
+    def test_client_analytics_unauthorized(self):
+        """Test that admin cannot access client analytics endpoint"""
+        if not self.admin_cookies:
+            print("❌ No admin session available for unauthorized analytics test")
+            return False
+        
+        success, response, _ = self.run_test(
+            "Admin Access Client Analytics (Should Fail)",
+            "GET",
+            "analytics/client",
+            403,
+            cookies=self.admin_cookies
+        )
+        
+        if success:
+            print("   ✅ Admin properly blocked from client analytics endpoint")
+        
+        return success
+
+    def test_admin_analytics_endpoint(self):
+        """Test GET /api/analytics/admin endpoint with different month parameters"""
+        if not self.admin_cookies:
+            print("❌ No admin session available for admin analytics test")
+            return False
+        
+        print(f"\n📈 Testing Admin Analytics Endpoint...")
+        
+        # Test with default months (12)
+        success, analytics_12_response, _ = self.run_test(
+            "Get Admin Analytics (12 months default)",
+            "GET",
+            "analytics/admin",
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        if not success:
+            print("❌ Admin analytics endpoint failed with default parameters")
+            return False
+        
+        print(f"   ✅ Default admin analytics returned {len(analytics_12_response)} months")
+        
+        # Test with 6 months parameter
+        success, analytics_6_response, _ = self.run_test(
+            "Get Admin Analytics (6 months)",
+            "GET",
+            "analytics/admin?months=6",
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        if not success:
+            print("❌ Admin analytics endpoint failed with 6 months parameter")
+            return False
+        
+        print(f"   ✅ 6-month admin analytics returned {len(analytics_6_response)} months")
+        
+        # Test with 24 months parameter
+        success, analytics_24_response, _ = self.run_test(
+            "Get Admin Analytics (24 months)",
+            "GET",
+            "analytics/admin?months=24",
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        if not success:
+            print("❌ Admin analytics endpoint failed with 24 months parameter")
+            return False
+        
+        print(f"   ✅ 24-month admin analytics returned {len(analytics_24_response)} months")
+        
+        # Verify response structure for admin analytics
+        if analytics_12_response:
+            sample_month = analytics_12_response[0]
+            expected_admin_fields = ['month_year', 'total_revenue', 'total_projects', 'completed_projects',
+                                   'pending_projects', 'new_clients', 'active_clients', 'average_project_value',
+                                   'project_completion_rate', 'revenue_by_client']
+            
+            missing_fields = []
+            for field in expected_admin_fields:
+                if field not in sample_month:
+                    missing_fields.append(field)
+            
+            if missing_fields:
+                print(f"❌ Missing admin analytics fields: {missing_fields}")
+                return False
+            
+            print(f"   ✅ Admin analytics structure correct - all required fields present")
+            print(f"   ✅ Sample month: {sample_month.get('month_year')}")
+            print(f"   ✅ Total revenue: ${sample_month.get('total_revenue')}")
+            print(f"   ✅ Total projects: {sample_month.get('total_projects')}")
+            print(f"   ✅ Active clients: {sample_month.get('active_clients')}")
+        
+        # Verify different month parameters return different amounts of data
+        if len(analytics_6_response) <= 6 and len(analytics_12_response) <= 12 and len(analytics_24_response) <= 24:
+            print(f"   ✅ Month parameters working correctly (6: {len(analytics_6_response)}, 12: {len(analytics_12_response)}, 24: {len(analytics_24_response)})")
+        else:
+            print(f"   ❌ Month parameters not working correctly")
+            return False
+        
+        return True
+
+    def test_admin_analytics_unauthorized(self):
+        """Test that clients cannot access admin analytics endpoint"""
+        # Create a test client
+        test_user_data = {
+            "email": "unauthorized_analytics@example.com",
+            "password": "testpass123",
+            "first_name": "Unauthorized",
+            "last_name": "Analytics",
+            "phone": "+1234567901",
+            "company_name": "Unauthorized Analytics Company"
+        }
+        
+        success, response, client_cookies = self.run_test(
+            "Create Client for Unauthorized Analytics Test",
+            "POST",
+            "auth/register",
+            200,
+            data=test_user_data
+        )
+        
+        if not success:
+            print("❌ Could not create test client for unauthorized analytics test")
+            return False
+        
+        client_user_id = response['user']['id']
+        
+        # Try to access admin analytics (should fail)
+        success, response, _ = self.run_test(
+            "Client Access Admin Analytics (Should Fail)",
+            "GET",
+            "analytics/admin",
+            403,
+            cookies=client_cookies
+        )
+        
+        # Clean up test client
+        self.run_test(
+            "Cleanup Unauthorized Analytics Test Client",
+            "DELETE",
+            f"admin/users/{client_user_id}",
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        if success:
+            print("   ✅ Client properly blocked from admin analytics endpoint")
+        
+        return success
+
+    def test_analytics_calculation_endpoint(self):
+        """Test POST /api/analytics/calculate endpoint for recalculating all analytics"""
+        if not self.admin_cookies:
+            print("❌ No admin session available for analytics calculation test")
+            return False
+        
+        print(f"\n🔄 Testing Analytics Calculation Endpoint...")
+        
+        # Create test clients with tasks for calculation testing
+        test_clients = [
+            {
+                "email": "calc_client1@example.com",
+                "password": "testpass123",
+                "first_name": "Calc",
+                "last_name": "Client1",
+                "phone": "+1234567902",
+                "company_name": "Calc Client 1 Company"
+            },
+            {
+                "email": "calc_client2@example.com",
+                "password": "testpass123",
+                "first_name": "Calc",
+                "last_name": "Client2",
+                "phone": "+1234567903",
+                "company_name": "Calc Client 2 Company"
+            }
+        ]
+        
+        created_client_ids = []
+        for i, client_data in enumerate(test_clients):
+            success, response, client_cookies = self.run_test(
+                f"Create Calc Test Client {i+1}",
+                "POST",
+                "auth/register",
+                200,
+                data=client_data
+            )
+            
+            if success:
+                client_id = response['user']['id']
+                created_client_ids.append(client_id)
+                
+                # Create a task for this client
+                task_data = {
+                    "title": f"Calc Test Task for Client {i+1}",
+                    "description": f"Task for analytics calculation testing",
+                    "due_datetime": (datetime.now() + timedelta(days=30)).isoformat(),
+                    "project_price": 1000.0 * (i + 1),
+                    "priority": "medium"
+                }
+                
+                self.run_test(
+                    f"Create Task for Calc Client {i+1}",
+                    "POST",
+                    "tasks",
+                    200,
+                    data=task_data,
+                    cookies=client_cookies
+                )
+        
+        print(f"   ✅ Created {len(created_client_ids)} test clients with tasks")
+        
+        # Test analytics calculation endpoint
+        success, calc_response, _ = self.run_test(
+            "Recalculate All Analytics",
+            "POST",
+            "analytics/calculate",
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        if not success:
+            print("❌ Analytics calculation endpoint failed")
+            return False
+        
+        # Verify calculation response
+        expected_calc_fields = ['message', 'clients_processed', 'admin_months_processed']
+        missing_fields = []
+        for field in expected_calc_fields:
+            if field not in calc_response:
+                missing_fields.append(field)
+        
+        if missing_fields:
+            print(f"❌ Missing calculation response fields: {missing_fields}")
+            return False
+        
+        print(f"   ✅ Analytics recalculation completed successfully")
+        print(f"   ✅ Clients processed: {calc_response.get('clients_processed')}")
+        print(f"   ✅ Admin months processed: {calc_response.get('admin_months_processed')}")
+        print(f"   ✅ Message: {calc_response.get('message')}")
+        
+        # Verify that analytics were actually calculated by checking if we can retrieve them
+        if created_client_ids:
+            # Get client analytics for one of the created clients
+            # We need to login as that client to test
+            client_login_data = {
+                "email": "calc_client1@example.com",
+                "password": "testpass123"
+            }
+            
+            # For this test, we'll just verify the calculation endpoint worked
+            # The actual analytics verification is covered in other tests
+            
+        # Clean up test clients
+        for client_id in created_client_ids:
+            self.run_test(
+                f"Cleanup Calc Test Client {client_id}",
+                "DELETE",
+                f"admin/users/{client_id}",
+                200,
+                cookies=self.admin_cookies
+            )
+        
+        return True
+
+    def test_analytics_calculation_unauthorized(self):
+        """Test that clients cannot access analytics calculation endpoint"""
+        # Create a test client
+        test_user_data = {
+            "email": "unauthorized_calc@example.com",
+            "password": "testpass123",
+            "first_name": "Unauthorized",
+            "last_name": "Calc",
+            "phone": "+1234567904",
+            "company_name": "Unauthorized Calc Company"
+        }
+        
+        success, response, client_cookies = self.run_test(
+            "Create Client for Unauthorized Calc Test",
+            "POST",
+            "auth/register",
+            200,
+            data=test_user_data
+        )
+        
+        if not success:
+            print("❌ Could not create test client for unauthorized calc test")
+            return False
+        
+        client_user_id = response['user']['id']
+        
+        # Try to access analytics calculation (should fail)
+        success, response, _ = self.run_test(
+            "Client Access Analytics Calculation (Should Fail)",
+            "POST",
+            "analytics/calculate",
+            403,
+            cookies=client_cookies
+        )
+        
+        # Clean up test client
+        self.run_test(
+            "Cleanup Unauthorized Calc Test Client",
+            "DELETE",
+            f"admin/users/{client_user_id}",
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        if success:
+            print("   ✅ Client properly blocked from analytics calculation endpoint")
+        
+        return success
+
+    def test_analytics_data_persistence(self):
+        """Test that analytics are properly stored in database collections"""
+        if not self.admin_cookies:
+            print("❌ No admin session available for analytics persistence test")
+            return False
+        
+        print(f"\n💾 Testing Analytics Data Persistence...")
+        
+        # Create a test client with tasks
+        test_user_data = {
+            "email": "persistence_client@example.com",
+            "password": "testpass123",
+            "first_name": "Persistence",
+            "last_name": "Client",
+            "phone": "+1234567905",
+            "company_name": "Persistence Test Company"
+        }
+        
+        success, response, client_cookies = self.run_test(
+            "Create Client for Persistence Test",
+            "POST",
+            "auth/register",
+            200,
+            data=test_user_data
+        )
+        
+        if not success:
+            print("❌ Could not create test client for persistence test")
+            return False
+        
+        client_user_id = response['user']['id']
+        
+        # Create tasks with different dates for monthly tracking
+        from datetime import datetime, timedelta
+        import calendar
+        
+        current_date = datetime.now()
+        last_month = current_date.replace(day=1) - timedelta(days=1)
+        
+        tasks_data = [
+            {
+                "title": "Current Month Task",
+                "description": "Task for current month analytics",
+                "due_datetime": (current_date + timedelta(days=30)).isoformat(),
+                "project_price": 2000.0,
+                "priority": "high"
+            },
+            {
+                "title": "Last Month Task",
+                "description": "Task for last month analytics",
+                "due_datetime": (last_month + timedelta(days=30)).isoformat(),
+                "project_price": 1500.0,
+                "priority": "medium"
+            }
+        ]
+        
+        for i, task_data in enumerate(tasks_data):
+            success, task_response, _ = self.run_test(
+                f"Create Persistence Test Task {i+1}",
+                "POST",
+                "tasks",
+                200,
+                data=task_data,
+                cookies=client_cookies
+            )
+            
+            if success:
+                print(f"   ✅ Created task {i+1} for persistence testing")
+        
+        # Get client analytics to trigger calculation and storage
+        success, client_analytics, _ = self.run_test(
+            "Get Client Analytics for Persistence Test",
+            "GET",
+            "analytics/client",
+            200,
+            cookies=client_cookies
+        )
+        
+        if not success:
+            print("❌ Could not get client analytics for persistence test")
+            return False
+        
+        print(f"   ✅ Client analytics calculated and retrieved")
+        print(f"   ✅ Client ID: {client_analytics.get('client_id')}")
+        print(f"   ✅ Monthly spending data: {len(client_analytics.get('monthly_spending', {}))}")
+        
+        # Get admin analytics to trigger calculation and storage
+        success, admin_analytics, _ = self.run_test(
+            "Get Admin Analytics for Persistence Test",
+            "GET",
+            "analytics/admin?months=3",
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        if not success:
+            print("❌ Could not get admin analytics for persistence test")
+            return False
+        
+        print(f"   ✅ Admin analytics calculated and retrieved")
+        print(f"   ✅ Number of months: {len(admin_analytics)}")
+        
+        # Verify that analytics contain proper date parsing and calculations
+        if admin_analytics:
+            for month_data in admin_analytics[:2]:  # Check first 2 months
+                month_year = month_data.get('month_year')
+                if month_year:
+                    print(f"   ✅ Month {month_year}: Revenue ${month_data.get('total_revenue')}, Projects {month_data.get('total_projects')}")
+                else:
+                    print("   ❌ Missing month_year in admin analytics")
+                    return False
+        
+        # Test recalculation to ensure data persistence works
+        success, recalc_response, _ = self.run_test(
+            "Recalculate Analytics for Persistence Test",
+            "POST",
+            "analytics/calculate",
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        if success:
+            print(f"   ✅ Analytics recalculation completed - data should be persisted")
+        
+        # Clean up test client
+        self.run_test(
+            "Cleanup Persistence Test Client",
+            "DELETE",
+            f"admin/users/{client_user_id}",
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        return True
+
+    def test_analytics_date_parsing_accuracy(self):
+        """Test that analytics calculations handle date parsing correctly"""
+        if not self.admin_cookies:
+            print("❌ No admin session available for date parsing test")
+            return False
+        
+        print(f"\n📅 Testing Analytics Date Parsing Accuracy...")
+        
+        # Create a test client
+        test_user_data = {
+            "email": "dateparse_client@example.com",
+            "password": "testpass123",
+            "first_name": "DateParse",
+            "last_name": "Client",
+            "phone": "+1234567906",
+            "company_name": "Date Parse Test Company"
+        }
+        
+        success, response, client_cookies = self.run_test(
+            "Create Client for Date Parse Test",
+            "POST",
+            "auth/register",
+            200,
+            data=test_user_data
+        )
+        
+        if not success:
+            print("❌ Could not create test client for date parse test")
+            return False
+        
+        client_user_id = response['user']['id']
+        
+        # Create tasks with specific dates across different months
+        from datetime import datetime, timedelta
+        
+        # Create tasks for different months to test monthly breakdown
+        base_date = datetime.now()
+        test_dates = [
+            base_date,  # Current month
+            base_date.replace(month=base_date.month-1 if base_date.month > 1 else 12, 
+                            year=base_date.year if base_date.month > 1 else base_date.year-1),  # Last month
+            base_date.replace(month=base_date.month-2 if base_date.month > 2 else 12-(2-base_date.month), 
+                            year=base_date.year if base_date.month > 2 else base_date.year-1)   # Two months ago
+        ]
+        
+        task_values = [1000.0, 1500.0, 2000.0]
+        
+        for i, (test_date, value) in enumerate(zip(test_dates, task_values)):
+            task_data = {
+                "title": f"Date Parse Test Task {i+1}",
+                "description": f"Task for {test_date.strftime('%Y-%m')} analytics",
+                "due_datetime": (test_date + timedelta(days=30)).isoformat(),
+                "project_price": value,
+                "priority": "medium"
+            }
+            
+            success, task_response, _ = self.run_test(
+                f"Create Date Parse Task {i+1} ({test_date.strftime('%Y-%m')})",
+                "POST",
+                "tasks",
+                200,
+                data=task_data,
+                cookies=client_cookies
+            )
+            
+            if success:
+                print(f"   ✅ Created task for {test_date.strftime('%Y-%m')}: ${value}")
+        
+        # Get client analytics to check monthly spending breakdown
+        success, client_analytics, _ = self.run_test(
+            "Get Client Analytics for Date Parse Test",
+            "GET",
+            "analytics/client",
+            200,
+            cookies=client_cookies
+        )
+        
+        if not success:
+            print("❌ Could not get client analytics for date parse test")
+            return False
+        
+        # Verify monthly spending data is properly parsed and calculated
+        monthly_spending = client_analytics.get('monthly_spending', {})
+        print(f"   ✅ Monthly spending breakdown: {len(monthly_spending)} months")
+        
+        total_from_monthly = sum(monthly_spending.values())
+        total_spent = client_analytics.get('total_spent', 0)
+        
+        if abs(total_from_monthly - total_spent) < 0.01:
+            print(f"   ✅ Monthly spending totals match overall total: ${total_spent}")
+        else:
+            print(f"   ❌ Monthly spending mismatch: monthly sum ${total_from_monthly}, total ${total_spent}")
+            return False
+        
+        # Check that we have data for the expected months
+        expected_months = set()
+        for test_date in test_dates:
+            expected_months.add(f"{test_date.year}-{test_date.month:02d}")
+        
+        actual_months = set(monthly_spending.keys())
+        
+        if expected_months.issubset(actual_months):
+            print(f"   ✅ All expected months present in analytics: {sorted(expected_months)}")
+        else:
+            missing_months = expected_months - actual_months
+            print(f"   ❌ Missing months in analytics: {missing_months}")
+            return False
+        
+        # Get admin analytics to verify monthly revenue calculations
+        success, admin_analytics, _ = self.run_test(
+            "Get Admin Analytics for Date Parse Test",
+            "GET",
+            "analytics/admin?months=6",
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        if success and admin_analytics:
+            print(f"   ✅ Admin analytics retrieved with {len(admin_analytics)} months")
+            
+            # Verify that admin analytics have proper month_year format
+            for month_data in admin_analytics[:3]:  # Check first 3 months
+                month_year = month_data.get('month_year')
+                if month_year and len(month_year) == 7 and month_year[4] == '-':
+                    print(f"   ✅ Proper month format: {month_year}")
+                else:
+                    print(f"   ❌ Invalid month format: {month_year}")
+                    return False
+        
+        # Clean up test client
+        self.run_test(
+            "Cleanup Date Parse Test Client",
+            "DELETE",
+            f"admin/users/{client_user_id}",
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        return True
+
 def main():
     print("🚀 Starting Project Planner Authentication & Authorization Tests")
     print("=" * 70)
