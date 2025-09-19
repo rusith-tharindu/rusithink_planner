@@ -1874,7 +1874,7 @@ async def calculate_client_analytics(client_id: str):
         pending_projects = total_projects - completed_projects
         
         # Calculate financial metrics
-        total_spent = sum(task.get("project_price", 0) for task in client_tasks)
+        total_spent = sum(task.get("project_price") or 0 for task in client_tasks)
         average_project_value = total_spent / total_projects if total_projects > 0 else 0
         project_completion_rate = (completed_projects / total_projects * 100) if total_projects > 0 else 0
         
@@ -1890,7 +1890,7 @@ async def calculate_client_analytics(client_id: str):
                 continue
                 
             month_key = task_date.strftime("%Y-%m")
-            project_price = task.get("project_price", 0)
+            project_price = task.get("project_price") or 0
             monthly_spending[month_key] = monthly_spending.get(month_key, 0) + project_price
         
         # Update or create client analytics
