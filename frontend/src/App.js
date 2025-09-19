@@ -1270,6 +1270,311 @@ const TaskForm = ({ onSubmit, onClose }) => {
   );
 };
 
+// Admin User Management Component
+const AdminUserManagement = ({ isVisible, onClose }) => {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [editForm, setEditForm] = useState({});
+
+  const fetchUsers = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get(`${API}/admin/users`, { withCredentials: true });
+      setUsers(response.data);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      toast.error('Failed to load users');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateUser = async (userId, userData) => {
+    try {
+      await axios.put(`${API}/admin/users/${userId}`, userData, { withCredentials: true });
+      toast.success('User updated successfully!');
+      setEditingUser(null);
+      setEditForm({});
+      fetchUsers();
+    } catch (error) {
+      console.error('Error updating user:', error);
+      toast.error('Failed to update user');
+    }
+  };
+
+  const exportCSV = async () => {
+    try {
+      const response = await axios.get(`${API}/admin/users/export/csv`, { 
+        withCredentials: true,
+        responseType: 'blob'
+      });
+      
+      const blob = new Blob([response.data], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'users_export.csv';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('CSV export downloaded successfully!');
+    } catch (error) {
+      console.error('Error exporting CSV:', error);
+      toast.error('Failed to export CSV');
+    }
+  };
+
+  const exportPDF = async () => {
+    try {
+      const response = await axios.get(`${API}/admin/users/export/pdf`, { 
+        withCredentials: true,
+        responseType: 'blob'
+      });
+      
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'users_export.pdf';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('PDF export downloaded successfully!');
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+      toast.error('Failed to export PDF');
+    }
+  };
+
+  const handleEdit = (user) => {
+    setEditingUser(user.id);
+    setEditForm({
+      first_name: user.first_name || '',
+      last_name: user.last_name || '',
+      phone: user.phone || '',
+      company_name: user.company_name || '',
+      address: user.address || '',
+      email: user.email
+    });
+  };
+
+  const handleSave = () => {
+    if (editingUser) {
+      updateUser(editingUser, editForm);
+    }
+  };
+
+  const handleCancel = () => {
+    setEditingUser(null);
+    setEditForm({});
+  };
+
+  useEffect(() => {
+    if (isVisible) {
+      fetchUsers();
+    }
+  }, [isVisible]);
+
+  if (!isVisible) return null;
+
+  return (
+    <Dialog open={isVisible} onOpenChange={onClose}>
+      <DialogContent className="bg-slate-900 border-slate-700 text-slate-100 max-w-7xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-3">
+            <Users className="w-6 h-6 text-blue-400" />
+            User Management
+          </DialogTitle>
+          <DialogDescription className="text-slate-400">
+            Manage registered users and export user data
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-6">
+          {/* Export Buttons */}
+          <div className="flex gap-3">
+            <Button 
+              onClick={exportCSV}
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export CSV
+            </Button>
+            <Button 
+              onClick={exportPDF}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export PDF
+            </Button>
+          </div>
+
+          {/* Users Table */}
+          {loading ? (
+            <div className="text-center py-8">
+              <div className="loading-spinner mx-auto mb-4"></div>
+              <p className="text-slate-400">Loading users...</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-700">
+                    <th className="text-left p-3 text-slate-200">Name</th>
+                    <th className="text-left p-3 text-slate-200">Email</th>
+                    <th className="text-left p-3 text-slate-200">Phone</th>
+                    <th className="text-left p-3 text-slate-200">Company</th>
+                    <th className="text-left p-3 text-slate-200">Address</th>
+                    <th className="text-left p-3 text-slate-200">Role</th>
+                    <th className="text-left p-3 text-slate-200">Type</th>
+                    <th className="text-left p-3 text-slate-200">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map((user) => (
+                    <tr key={user.id} className="border-b border-slate-800">
+                      <td className="p-3">
+                        {editingUser === user.id ? (
+                          <div className="space-y-1">
+                            <Input
+                              value={editForm.first_name}
+                              onChange={(e) => setEditForm({...editForm, first_name: e.target.value})}
+                              placeholder="First name"
+                              className="bg-slate-800 border-slate-600 text-slate-100 text-xs"
+                            />
+                            <Input
+                              value={editForm.last_name}
+                              onChange={(e) => setEditForm({...editForm, last_name: e.target.value})}
+                              placeholder="Last name"
+                              className="bg-slate-800 border-slate-600 text-slate-100 text-xs"
+                            />
+                          </div>
+                        ) : (
+                          <div>
+                            <div className="text-slate-100">{user.name}</div>
+                            <div className="text-slate-400 text-xs">
+                              {user.first_name} {user.last_name}
+                            </div>
+                          </div>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        {editingUser === user.id ? (
+                          <Input
+                            value={editForm.email}
+                            onChange={(e) => setEditForm({...editForm, email: e.target.value})}
+                            placeholder="Email"
+                            className="bg-slate-800 border-slate-600 text-slate-100 text-xs"
+                          />
+                        ) : (
+                          <div className="text-slate-300">{user.email}</div>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        {editingUser === user.id ? (
+                          <Input
+                            value={editForm.phone}
+                            onChange={(e) => setEditForm({...editForm, phone: e.target.value})}
+                            placeholder="Phone"
+                            className="bg-slate-800 border-slate-600 text-slate-100 text-xs"
+                          />
+                        ) : (
+                          <div className="text-slate-300">{user.phone || 'N/A'}</div>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        {editingUser === user.id ? (
+                          <Input
+                            value={editForm.company_name}
+                            onChange={(e) => setEditForm({...editForm, company_name: e.target.value})}
+                            placeholder="Company"
+                            className="bg-slate-800 border-slate-600 text-slate-100 text-xs"
+                          />
+                        ) : (
+                          <div className="text-slate-300">{user.company_name || 'N/A'}</div>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        {editingUser === user.id ? (
+                          <Textarea
+                            value={editForm.address}
+                            onChange={(e) => setEditForm({...editForm, address: e.target.value})}
+                            placeholder="Address"
+                            className="bg-slate-800 border-slate-600 text-slate-100 text-xs"
+                            rows={2}
+                          />
+                        ) : (
+                          <div className="text-slate-300 max-w-xs truncate" title={user.address}>
+                            {user.address || 'N/A'}
+                          </div>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        <Badge className={`text-xs ${
+                          user.role === 'admin' 
+                            ? 'bg-red-900/20 text-red-400 border-red-700/30'
+                            : 'bg-blue-900/20 text-blue-400 border-blue-700/30'
+                        }`}>
+                          {user.role.toUpperCase()}
+                        </Badge>
+                      </td>
+                      <td className="p-3">
+                        <Badge className={`text-xs ${
+                          user.registration_type === 'oauth'
+                            ? 'bg-green-900/20 text-green-400 border-green-700/30'
+                            : user.registration_type === 'manual'
+                            ? 'bg-yellow-900/20 text-yellow-400 border-yellow-700/30'
+                            : 'bg-purple-900/20 text-purple-400 border-purple-700/30'
+                        }`}>
+                          {user.registration_type?.toUpperCase()}
+                        </Badge>
+                      </td>
+                      <td className="p-3">
+                        {editingUser === user.id ? (
+                          <div className="flex gap-1">
+                            <Button size="sm" onClick={handleSave} className="bg-green-600 hover:bg-green-700 text-white">
+                              <Check className="w-3 h-3" />
+                            </Button>
+                            <Button size="sm" onClick={handleCancel} variant="outline" className="border-slate-600">
+                              <X className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button 
+                            size="sm" 
+                            onClick={() => handleEdit(user)}
+                            variant="ghost"
+                            className="text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
+                          >
+                            <Edit className="w-3 h-3" />
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              
+              {users.length === 0 && (
+                <div className="text-center py-8">
+                  <Users className="w-12 h-12 text-slate-600 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-slate-300 mb-2">No users found</h3>
+                  <p className="text-slate-500">No registered users yet.</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 // Main Dashboard Component
 const Dashboard = () => {
   const { user, logout } = useAuth();
