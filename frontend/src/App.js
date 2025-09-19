@@ -637,7 +637,9 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
   const fileInputRef = useRef(null);
 
   // Determine recipient based on user role
-  const recipientId = user.role === 'admin' ? adminUserId : adminUserId; // For clients, recipient is admin
+  // For clients: recipient should be admin (adminUserId)
+  // For admin in chat manager: recipient should be the selected client (adminUserId holds client ID)
+  const recipientId = adminUserId;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
