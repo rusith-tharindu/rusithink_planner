@@ -737,15 +737,24 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
   useEffect(() => {
     if (recipientId) {
       fetchMessages();
-      // Set up more frequent polling for real-time feel (every 2 seconds)
-      const interval = setInterval(fetchMessages, 2000);
+      // Reduced polling frequency to every 5 seconds instead of 2 seconds
+      // and only poll when component is visible/active
+      const interval = setInterval(() => {
+        // Only fetch if document is visible (user is on the tab)
+        if (!document.hidden) {
+          fetchMessages();
+        }
+      }, 5000);
       return () => clearInterval(interval);
     }
   }, [recipientId, taskId]);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    // Only scroll to bottom if not loading to avoid interrupting user interactions
+    if (!loading && messages.length > 0) {
+      scrollToBottom();
+    }
+  }, [messages, loading]);
 
   if (!recipientId) {
     return (
