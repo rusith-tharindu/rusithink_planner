@@ -115,7 +115,7 @@ const OAuthHandler = () => {
   }, [location, navigate, login, processing]);
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+    <div className="min-h-screen bg-black flex items-center justify-center">
       <div className="text-center">
         <div className="flex justify-center mb-4">
           <img 
