@@ -212,8 +212,8 @@ const Login = () => {
               className="h-16 w-auto"
             />
           </div>
-          <h2 className="text-3xl font-bold text-slate-100 mb-2">RusiThink</h2>
-          <p className="text-slate-400">
+          <h2 className="text-3xl font-bold text-white mb-2">RusiThink</h2>
+          <p className="text-gray-300">
             {showRegister ? 'Create your account' : 'Sign in to manage your projects'}
           </p>
         </div>
