@@ -2494,6 +2494,84 @@ class ProjectPlannerAPITester:
         
         return success
 
+    def test_analytics_date_calculation_fix_verification(self):
+        """Test analytics date calculation fix - PRIMARY FOCUS for 24 months parameter"""
+        if not self.admin_cookies:
+            print("❌ No admin session available for analytics date fix test")
+            return False
+        
+        print(f"\n🎯 Testing Analytics Date Calculation Fix - PRIMARY FOCUS")
+        print("   FOCUS: Verify 24 months parameter works after date calculation fix")
+        
+        # Test 1: Admin Analytics with 6 months (should work)
+        success, response_6m, _ = self.run_test(
+            "Admin Analytics - 6 Months (Baseline)",
+            "GET",
+            "analytics/admin?months=6",
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        if success:
+            print(f"   ✅ 6 months parameter works - {len(response_6m)} months of data")
+        else:
+            print("   ❌ 6 months parameter failed - baseline test failed")
+            return False
+        
+        # Test 2: Admin Analytics with 12 months (should work)
+        success, response_12m, _ = self.run_test(
+            "Admin Analytics - 12 Months (Baseline)",
+            "GET",
+            "analytics/admin?months=12",
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        if success:
+            print(f"   ✅ 12 months parameter works - {len(response_12m)} months of data")
+        else:
+            print("   ❌ 12 months parameter failed - baseline test failed")
+            return False
+        
+        # Test 3: Admin Analytics with 24 months (CRITICAL TEST - was failing before fix)
+        print(f"\n   🔍 CRITICAL TEST: Admin Analytics with 24 months parameter")
+        print("   Previous error: 'month must be in 1..12' - testing if fixed")
+        
+        success, response_24m, _ = self.run_test(
+            "Admin Analytics - 24 Months (CRITICAL FIX TEST)",
+            "GET",
+            "analytics/admin?months=24",
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        if success:
+            print(f"   🎉 SUCCESS: 24 months parameter now works! - {len(response_24m)} months of data")
+            print("   ✅ Date calculation fix verified - no more 'month must be in 1..12' error")
+            
+            # Verify response structure
+            if isinstance(response_24m, list) and len(response_24m) > 0:
+                sample_month = response_24m[0]
+                required_fields = ['month_year', 'total_revenue', 'total_projects', 
+                                 'completed_projects', 'pending_projects', 'new_clients',
+                                 'active_clients', 'average_project_value', 
+                                 'project_completion_rate', 'revenue_by_client']
+                
+                missing_fields = [field for field in required_fields if field not in sample_month]
+                if missing_fields:
+                    print(f"   ⚠️  Missing fields in analytics: {missing_fields}")
+                else:
+                    print("   ✅ All required analytics fields present")
+                
+                # Show sample data
+                print(f"   📊 Sample month data: {sample_month.get('month_year')} - Revenue: ${sample_month.get('total_revenue')}")
+            
+            return True
+        else:
+            print("   ❌ CRITICAL FAILURE: 24 months parameter still fails!")
+            print("   ❌ Date calculation fix not working - issue persists")
+            return False
+
     def test_analytics_data_persistence(self):
         """Test that analytics are properly stored in database collections"""
         if not self.admin_cookies:
