@@ -630,17 +630,25 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  const recipientId = user.role === 'admin' ? null : adminUserId; // For clients, recipient is admin
+  // Determine recipient based on user role
+  const recipientId = user.role === 'admin' ? adminUserId : adminUserId;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   const fetchMessages = async () => {
+    if (!recipientId) return;
+    
     setLoading(true);
     try {
-      const params = taskId ? `?task_id=${taskId}` : '';
-      const response = await axios.get(`${API}/chat/messages${params}`, { withCredentials: true });
+      const params = new URLSearchParams();
+      if (taskId) params.append('task_id', taskId);
+      if (user.role === 'admin') params.append('client_id', recipientId);
+      
+      const response = await axios.get(`${API}/chat/messages${params.toString() ? `?${params}` : ''}`, { 
+        withCredentials: true 
+      });
       setMessages(response.data);
     } catch (error) {
       console.error('Error fetching messages:', error);
@@ -661,7 +669,8 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
 
       await axios.post(`${API}/chat/messages`, messageData, { withCredentials: true });
       setNewMessage('');
-      fetchMessages(); // Refresh messages
+      fetchMessages(); // Refresh messages immediately
+      toast.success('Message sent');
     } catch (error) {
       console.error('Error sending message:', error);
       toast.error('Failed to send message');
@@ -671,6 +680,22 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
   const handleFileUpload = async (event) => {
     const file = event.target.files[0];
     if (!file || !recipientId) return;
+
+    // Validate file size (16MB limit)
+    if (file.size > 16 * 1024 * 1024) {
+      toast.error('File too large. Maximum size is 16MB');
+      event.target.value = '';
+      return;
+    }
+
+    // Validate file type
+    const allowedTypes = ['.png', '.jpg', '.jpeg', '.pdf', '.heic', '.csv'];
+    const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+    if (!allowedTypes.includes(fileExtension)) {
+      toast.error('File type not allowed. Only PNG, JPG, PDF, HEIC, and CSV files are permitted');
+      event.target.value = '';
+      return;
+    }
 
     setUploading(true);
     try {
@@ -685,11 +710,12 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
-      fetchMessages(); // Refresh messages
+      fetchMessages(); // Refresh messages immediately
       toast.success('File uploaded successfully');
     } catch (error) {
       console.error('Error uploading file:', error);
-      toast.error('Failed to upload file');
+      const errorMsg = error.response?.data?.detail || 'Failed to upload file';
+      toast.error(errorMsg);
     } finally {
       setUploading(false);
       event.target.value = ''; // Clear file input
@@ -699,8 +725,8 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
   useEffect(() => {
     if (recipientId) {
       fetchMessages();
-      // Set up polling for new messages
-      const interval = setInterval(fetchMessages, 5000);
+      // Set up more frequent polling for real-time feel (every 2 seconds)
+      const interval = setInterval(fetchMessages, 2000);
       return () => clearInterval(interval);
     }
   }, [recipientId, taskId]);
@@ -712,7 +738,10 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
   if (!recipientId) {
     return (
       <div className="flex items-center justify-center h-64 text-slate-400">
-        Chat system loading...
+        <div className="text-center">
+          <MessageSquare className="w-12 h-12 mx-auto mb-4 text-slate-600" />
+          <p>Chat system loading...</p>
+        </div>
       </div>
     );
   }
@@ -728,6 +757,10 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
         <p className="text-sm text-slate-400">
           {user.role === 'admin' ? 'Chat with client' : 'Chat with admin'}
         </p>
+        <div className="flex items-center gap-2 mt-1">
+          <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+          <span className="text-xs text-slate-500">Real-time chat</span>
+        </div>
       </div>
 
       {/* Messages */}
@@ -774,10 +807,17 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
                       href={`${BACKEND_URL}${message.file_url}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-blue-300 hover:text-blue-200"
+                      className="flex items-center gap-2 text-blue-300 hover:text-blue-200 underline"
                     >
-                      <FileText className="w-4 h-4" />
+                      {message.file_name?.toLowerCase().endsWith('.pdf') ? (
+                        <FileText className="w-4 h-4" />
+                      ) : message.file_name?.toLowerCase().endsWith('.csv') ? (
+                        <FileText className="w-4 h-4" />
+                      ) : (
+                        <ImageIcon className="w-4 h-4" />
+                      )}
                       {message.file_name}
+                      <span className="text-xs">({(message.file_size / 1024 / 1024).toFixed(1)} MB)</span>
                     </a>
                   </div>
                 )}
@@ -787,15 +827,15 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
                     <img
                       src={`${BACKEND_URL}${message.file_url}`}
                       alt={message.file_name}
-                      className="max-w-full h-auto rounded cursor-pointer"
+                      className="max-w-full h-auto rounded cursor-pointer hover:opacity-90 transition-opacity"
                       onClick={() => window.open(`${BACKEND_URL}${message.file_url}`, '_blank')}
                     />
                   </div>
                 )}
                 
-                <p className="text-sm">{message.content}</p>
+                <p className="text-sm leading-relaxed">{message.content}</p>
                 <p className="text-xs opacity-70 mt-1">
-                  {format(new Date(message.created_at), 'HH:mm')}
+                  {format(new Date(message.created_at), 'MMM dd, HH:mm')}
                 </p>
               </div>
             </div>
@@ -812,7 +852,7 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
             onChange={(e) => setNewMessage(e.target.value)}
             placeholder="Type your message..."
             className="flex-1 bg-slate-800 border-slate-600 text-slate-100"
-            onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+            onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
           />
           <input
             type="file"
@@ -826,7 +866,8 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
             disabled={uploading}
             variant="outline"
             size="sm"
-            className="border-slate-600 text-slate-200"
+            className="border-slate-600 text-slate-200 hover:bg-slate-700"
+            title="Upload file (PNG, JPG, PDF, HEIC, CSV - Max 16MB)"
           >
             {uploading ? <div className="loading-spinner w-4 h-4" /> : <Paperclip className="w-4 h-4" />}
           </Button>
@@ -838,6 +879,9 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
             <Send className="w-4 h-4" />
           </Button>
         </div>
+        <p className="text-xs text-slate-500 mt-1">
+          Supported files: PNG, JPG, PDF, HEIC, CSV (Max 16MB)
+        </p>
       </div>
     </div>
   );
