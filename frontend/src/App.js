@@ -1734,6 +1734,18 @@ const Dashboard = () => {
             </div>
             
             <div className="flex gap-3">
+              {/* Admin User Management Button */}
+              {isAdmin && (
+                <Button 
+                  onClick={() => setShowUserManagement(true)}
+                  variant="outline" 
+                  className="border-slate-600 text-slate-200 hover:bg-slate-700"
+                >
+                  <Users className="w-4 h-4 mr-2" />
+                  Manage Users
+                </Button>
+              )}
+              
               {/* Notification Bell */}
               {unreadCount > 0 && (
                 <div className="relative">
