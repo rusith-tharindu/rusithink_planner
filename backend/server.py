@@ -1967,12 +1967,17 @@ async def recalculate_analytics(request: Request):
         admin_months = 0
         
         for i in range(12):
-            if current_date.month - i <= 0:
-                year = current_date.year - 1
-                month = 12 + (current_date.month - i)
-            else:
-                year = current_date.year
-                month = current_date.month - i
+            # Calculate date for each month going backwards
+            target_date = current_date.replace(day=1)  # First day of current month
+            
+            # Go back i months
+            year = target_date.year
+            month = target_date.month - i
+            
+            # Handle year boundary crossing
+            while month <= 0:
+                month += 12
+                year -= 1
             
             month_year = f"{year}-{month:02d}"
             await calculate_admin_analytics(month_year)
