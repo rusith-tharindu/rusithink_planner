@@ -178,6 +178,9 @@ backend:
       - working: true
         agent: "testing"
         comment: "✅ All user management APIs tested and working. GET /api/admin/users retrieves all users correctly. PUT /api/admin/users/{user_id} updates user details successfully. GET /api/admin/users/export/csv exports CSV correctly (fixed datetime formatting issue). GET /api/admin/users/export/pdf exports PDF correctly with proper headers and content."
+      - working: true
+        agent: "testing"
+        comment: "🎉 ADMIN MANAGEMENT FUNCTIONALITY VERIFICATION: User export functionality CONFIRMED WORKING with address field included. CSV export working perfectly with all required headers including address. PDF export working perfectly with address field and proper formatting - FIXED critical NoneType error in address handling. Both exports ready for production use."
 
   - task: "Chat System API with file upload"
     implemented: true
