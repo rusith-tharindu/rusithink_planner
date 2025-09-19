@@ -997,14 +997,29 @@ async def upload_chat_file(
         raise HTTPException(status_code=500, detail=f"Failed to upload file: {str(e)}")
 
 @api_router.get("/chat/messages", response_model=List[ChatMessage])
-async def get_chat_messages(request: Request, task_id: Optional[str] = None, limit: int = 50):
+async def get_chat_messages(
+    request: Request, 
+    task_id: Optional[str] = None, 
+    client_id: Optional[str] = None,
+    limit: int = 50
+):
     """Get chat messages for current user"""
     user = await require_auth(request)
     
     try:
-        # Build query filter
-        if task_id:
-            # Get messages for specific task
+        # Build query filter based on user role and parameters
+        if user.role == UserRole.ADMIN and client_id:
+            # Admin viewing conversation with specific client
+            message_filter = {
+                "$or": [
+                    {"sender_id": user.id, "recipient_id": client_id},
+                    {"sender_id": client_id, "recipient_id": user.id}
+                ]
+            }
+            if task_id:
+                message_filter["task_id"] = task_id
+        elif task_id:
+            # Get messages for specific task (user must be involved)
             message_filter = {
                 "task_id": task_id,
                 "$or": [
