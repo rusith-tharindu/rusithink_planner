@@ -1980,7 +1980,8 @@ async def calculate_admin_analytics(month_year: str = None):
         for task in month_tasks:
             client_id = task.get("created_by")
             if client_id:
-                revenue_by_client[client_id] = revenue_by_client.get(client_id, 0) + task.get("project_price", 0)
+                project_price = task.get("project_price") or 0
+                revenue_by_client[client_id] = revenue_by_client.get(client_id, 0) + project_price
         
         # Update or create admin analytics
         analytics_data = {
