@@ -1985,6 +1985,18 @@ const Dashboard = () => {
                 </Button>
               )}
               
+              {/* Admin Chat Management Button */}
+              {isAdmin && (
+                <Button 
+                  onClick={() => setShowChatManagement(true)}
+                  variant="outline" 
+                  className="border-slate-600 text-slate-200 hover:bg-slate-700"
+                >
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  Chat Center
+                </Button>
+              )}
+              
               {/* Notification Bell */}
               {unreadCount > 0 && (
                 <div className="relative">
