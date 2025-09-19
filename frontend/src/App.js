@@ -1929,6 +1929,14 @@ const Dashboard = () => {
         </div>
       </div>
       
+      {/* Admin User Management Dialog */}
+      {isAdmin && (
+        <AdminUserManagement 
+          isVisible={showUserManagement}
+          onClose={() => setShowUserManagement(false)}
+        />
+      )}
+      
       <Toaster 
         theme="dark"
         position="top-right"
