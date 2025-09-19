@@ -2911,14 +2911,14 @@ const Dashboard = () => {
                 <CardHeader>
                   <CardTitle className="text-white flex items-center gap-2">
                     <MessageSquare className="w-5 h-5 text-yellow-400" />
-                    Chat with Admin
+                    General Chat with Admin
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ChatSystem 
                     user={user} 
                     adminUserId={adminUser.id}
-                    taskId={selectedTask?.id}
+                    taskId={null} // General chat, not tied to specific task
                   />
                 </CardContent>
               </Card>
