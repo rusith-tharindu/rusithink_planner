@@ -2658,13 +2658,27 @@ const AdminUserManagement = ({ isVisible, onClose }) => {
 
   const deleteUser = async (userId) => {
     try {
-      const response = await axios.delete(`${API}/admin/users/${userId}`, { withCredentials: true });
-      toast.success(response.data.message);
+      console.log('Starting user deletion for ID:', userId);
+      toast.loading('Deleting user...', { id: 'delete-user' });
+      
+      const response = await axios.delete(`${API}/admin/users/${userId}`, { 
+        withCredentials: true,
+        timeout: 15000 // 15 second timeout
+      });
+      
+      console.log('User deletion response:', response.data);
+      toast.success(response.data.message || 'User deleted successfully', { id: 'delete-user' });
       fetchUsers();
     } catch (error) {
       console.error('Error deleting user:', error);
-      const errorMsg = error.response?.data?.detail || 'Failed to delete user';
-      toast.error(errorMsg);
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        statusText: error.response?.statusText
+      });
+      const errorMsg = error.response?.data?.detail || error.message || 'Failed to delete user';
+      toast.error(errorMsg, { id: 'delete-user' });
     }
   };
 
@@ -2677,23 +2691,38 @@ const AdminUserManagement = ({ isVisible, onClose }) => {
 
     setDeleting(true);
     try {
+      console.log('Starting bulk user deletion for IDs:', Array.from(selectedUsers));
+      toast.loading('Deleting selected users...', { id: 'bulk-delete' });
+      
       const userIds = Array.from(selectedUsers);
       const response = await axios.delete(`${API}/admin/users/bulk`, {
         data: userIds,
-        withCredentials: true
+        withCredentials: true,
+        timeout: 30000 // 30 second timeout
       });
       
-      toast.success(response.data.message);
+      console.log('Bulk deletion response:', response.data);
+      toast.success(response.data.message || 'Users deleted successfully', { id: 'bulk-delete' });
+      
       if (response.data.errors && response.data.errors.length > 0) {
-        response.data.errors.forEach(error => toast.error(error));
+        response.data.errors.forEach(error => {
+          console.warn('Bulk delete error:', error);
+          toast.error(error);
+        });
       }
       
       setSelectedUsers(new Set());
       fetchUsers();
     } catch (error) {
       console.error('Error deleting users:', error);
-      const errorMsg = error.response?.data?.detail || 'Failed to delete users';
-      toast.error(errorMsg);
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        statusText: error.response?.statusText
+      });
+      const errorMsg = error.response?.data?.detail || error.message || 'Failed to delete users';
+      toast.error(errorMsg, { id: 'bulk-delete' });
     } finally {
       setDeleting(false);
     }
