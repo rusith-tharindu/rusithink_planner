@@ -223,7 +223,7 @@ const Login = () => {
             <CardTitle className="text-white">
               {showRegister ? 'Sign Up for RusiThink' : 'Sign In to RusiThink'}
             </CardTitle>
-            <CardDescription className="text-slate-400">
+            <CardDescription className="text-gray-400">
               {showRegister ? 'Fill in your details to get started' : 'Choose your sign-in method'}
             </CardDescription>
           </CardHeader>
