@@ -771,9 +771,9 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
   }
 
   return (
-    <div className="flex flex-col h-96 bg-gray-900/50 rounded-lg border border-gray-700/30">
+    <div className="flex flex-col h-96 bg-gray-900/50 rounded-lg border border-gray-700/30 overflow-hidden">
       {/* Chat Header */}
-      <div className="p-4 border-b border-gray-700/30">
+      <div className="p-4 border-b border-gray-700/30 flex-shrink-0">
         <h3 className="text-lg font-semibold text-white flex items-center gap-2">
           <MessageSquare className="w-5 h-5 text-yellow-400" />
           {taskId ? 'Project Chat' : 'General Chat'}
@@ -788,11 +788,11 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth">
         {loading ? (
-          <div className="text-center py-8">
-            <div className="loading-spinner mx-auto mb-4"></div>
-            <p className="text-gray-400">Loading messages...</p>
+          <div className="text-center py-4">
+            <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-yellow-400 mb-2"></div>
+            <p className="text-gray-400 text-sm">Loading messages...</p>
           </div>
         ) : messages.length === 0 ? (
           <div className="text-center py-8">
@@ -871,7 +871,7 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
       </div>
 
       {/* Message Input */}
-      <div className="p-4 border-t border-gray-700/30">
+      <div className="p-4 border-t border-gray-700/30 flex-shrink-0">
         <div className="flex gap-2">
           <Input
             value={newMessage}
@@ -879,6 +879,7 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
             placeholder="Type your message..."
             className="flex-1 bg-gray-800 border-gray-600 text-white focus:border-yellow-500 focus:ring-yellow-500"
             onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+            disabled={loading}
           />
           <input
             type="file"
@@ -889,17 +890,17 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
           />
           <Button
             onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
+            disabled={uploading || loading}
             variant="outline"
             size="sm"
             className="border-gray-600 text-gray-200 hover:bg-gray-800"
             title="Upload file (PNG, JPG, PDF, HEIC, CSV - Max 16MB)"
           >
-            {uploading ? <div className="loading-spinner w-4 h-4" /> : <Paperclip className="w-4 h-4" />}
+            {uploading ? <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400" /> : <Paperclip className="w-4 h-4" />}
           </Button>
           <Button
             onClick={sendMessage}
-            disabled={!newMessage.trim()}
+            disabled={!newMessage.trim() || loading}
             className="bg-yellow-600 hover:bg-yellow-700 text-black font-semibold"
           >
             <Send className="w-4 h-4" />
