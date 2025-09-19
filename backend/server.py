@@ -1286,6 +1286,52 @@ async def delete_multiple_users(user_ids: List[str], request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete users: {str(e)}")
 
+@api_router.delete("/admin/users/{user_id}")
+async def delete_user(user_id: str, request: Request):
+    """Delete a user (admin only)"""
+    await require_admin(request)
+    
+    try:
+        # Check if user exists
+        user = await db.users.find_one({"id": user_id})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        user = parse_from_mongo(user)
+        
+        # Prevent admin from deleting themselves
+        current_user = await require_auth(request)
+        if user_id == current_user.id:
+            raise HTTPException(status_code=400, detail="Cannot delete your own account")
+        
+        # Prevent deleting other admin accounts
+        if user.get("role") == "admin":
+            raise HTTPException(status_code=400, detail="Cannot delete admin accounts")
+        
+        # Delete user's tasks
+        await db.tasks.delete_many({"created_by": user_id})
+        
+        # Delete user's chat messages
+        await db.chat_messages.delete_many({
+            "$or": [
+                {"sender_id": user_id},
+                {"recipient_id": user_id}
+            ]
+        })
+        
+        # Delete the user
+        result = await db.users.delete_one({"id": user_id})
+        
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        return {"message": f"User {user.get('name', user.get('email'))} deleted successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete user: {str(e)}")
+
 @api_router.put("/admin/users/{user_id}", response_model=User)
 async def update_user(user_id: str, user_update: UserUpdate, request: Request):
     """Update user information (admin only)"""
