@@ -502,9 +502,20 @@ const AdminChatManager = ({ isVisible, onClose }) => {
     <Dialog open={isVisible} onOpenChange={onClose}>
       <DialogContent className="bg-slate-900 border-slate-700 text-slate-100 max-w-6xl max-h-[90vh] overflow-hidden">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-3">
-            <MessageSquare className="w-6 h-6 text-blue-400" />
-            Client Chat Management
+          <DialogTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <MessageSquare className="w-6 h-6 text-yellow-400" />
+              Client Chat Management
+            </div>
+            <Button 
+              onClick={fetchConversations}
+              variant="outline"
+              size="sm"
+              className="border-gray-600 text-gray-200 hover:bg-gray-800"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Refresh
+            </Button>
           </DialogTitle>
           <DialogDescription className="text-slate-400">
             View and manage conversations with all clients
