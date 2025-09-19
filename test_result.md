@@ -503,11 +503,14 @@ test_plan:
     - "Admin User Management Table UI"
     - "Client Registration Form with Address"
   authentication_test_results:
-    - admin_login: "FAILED - CORS blocked API calls to old domain"
-    - registration: "FAILED - CORS blocked API calls to old domain"
-    - oauth_redirect: "SUCCESS - Correctly redirects to auth.emergentagent.com with custom domain"
-    - ui_elements: "SUCCESS - All forms render correctly with address field"
-    - network_analysis: "CRITICAL - 5 API calls to old domain, 0 to correct domain"
+    - admin_login: "CRITICAL FAILURE - CORS blocked API calls to old domain (https://rusithink-planner.emergent.host)"
+    - registration: "UI SUCCESS, API FAILURE - Form renders with address field but API calls would go to old domain"
+    - oauth_redirect: "SUCCESS - Google OAuth button present and would redirect correctly to auth.emergentagent.com"
+    - ui_elements: "SUCCESS - All forms render correctly with address field included"
+    - network_analysis: "CRITICAL FAILURE - 4 API calls to old domain, 0 to correct domain"
+    - cors_errors: "CRITICAL - Multiple CORS policy violations detected"
+    - overall_success_rate: "16.7% (1/6 criteria met)"
+    - deployment_issue: "CONFIRMED - JavaScript bundle not using correct environment variable"
 
 agent_communication:
   - agent: "main"
