@@ -151,6 +151,33 @@ backend:
       - working: true
         agent: "testing"
         comment: "✅ Chat file upload API working correctly. File size validation (16MB limit) working. File format validation working (pdf, png, jpg, heic, csv only). Invalid formats properly rejected with 400 error. Oversized files properly rejected with 400 error."
+      - working: true
+        agent: "testing"
+        comment: "✅ Enhanced chat system fully tested and working: 1) Chat export endpoints (GET /api/admin/chat/export/{client_id} for CSV export, GET /api/admin/chat/conversations for conversation list) working perfectly. 2) Enhanced chat messages endpoint with client_id parameter for admin users working correctly. 3) Privacy controls verified - clients cannot see other clients' messages. 4) File upload restrictions re-verified - all valid formats (png, jpg, pdf, heic, csv) accepted, invalid formats rejected, 16MB size limit enforced. 5) Complete chat flow tested - admin-client messaging, file uploads from both sides, message privacy between different clients all working. Fixed datetime comparison issue in conversations endpoint. All enhanced features operational."
+
+  - task: "Enhanced Chat Export Functionality"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Chat export endpoints fully tested and working. GET /api/admin/chat/export/{client_id} successfully exports chat messages for specific client as CSV with proper headers (Date & Time, Sender, Role, Message Type, Content, File Name, Task ID). GET /api/admin/chat/conversations returns list of all client conversations with client details, unread counts, and last message info. Fixed datetime comparison bug in conversations sorting. Both endpoints properly secured for admin-only access."
+
+  - task: "Enhanced Chat Messages with Privacy Controls"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Enhanced chat messages endpoint with client_id parameter working perfectly. Admin users can specify client_id parameter to view conversation with specific client. Privacy controls verified - non-admin users cannot access other clients' messages even with client_id parameter. Message filtering properly implemented - all returned messages involve only the requesting user or specified client (for admin). Complete message privacy maintained between different clients."
 
   - task: "Project Milestones API"
     implemented: true
