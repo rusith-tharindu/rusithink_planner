@@ -1489,7 +1489,7 @@ async def export_users_pdf(request: Request):
         content.append(Spacer(1, 20))
         
         # Prepare table data
-        table_data = [['Email', 'Name', 'Phone', 'Company', 'Registration', 'Date']]
+        table_data = [['Email', 'Name', 'Phone', 'Company', 'Address', 'Type', 'Date']]
         
         for user in parsed_users:
             name = f"{user.get('first_name', '')} {user.get('last_name', '')}".strip()
@@ -1503,28 +1503,35 @@ async def export_users_pdf(request: Request):
                 except:
                     created_date = str(user.get('created_at', ''))[:10]
             
+            # Truncate address for table display
+            address = user.get('address', '')
+            if len(address) > 30:
+                address = address[:30] + '...'
+            
             table_data.append([
                 user.get('email', ''),
                 name,
                 user.get('phone', ''),
                 user.get('company_name', ''),
+                address,
                 user.get('registration_type', 'oauth').title(),
                 created_date
             ])
         
-        # Create table
-        table = Table(table_data, colWidths=[2*inch, 1.5*inch, 1*inch, 1.5*inch, 0.8*inch, 0.8*inch])
+        # Create table with adjusted column widths
+        table = Table(table_data, colWidths=[1.8*inch, 1.2*inch, 0.8*inch, 1.2*inch, 1.2*inch, 0.6*inch, 0.8*inch])
         table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('FONTSIZE', (0, 0), (-1, 0), 9),
             ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
             ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
             ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 1), (-1, -1), 8),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ('FONTSIZE', (0, 1), (-1, -1), 7),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ]))
         
         content.append(table)
