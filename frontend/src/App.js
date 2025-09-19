@@ -641,6 +641,7 @@ const ChatSystem = ({ user, adminUserId, taskId = null }) => {
   const messagesContainerRef = useRef(null);
   const fileInputRef = useRef(null);
   const lastFetchTime = useRef(0);
+  const shouldAutoScroll = useRef(true); // Control auto-scroll behavior
 
   // Determine recipient based on user role
   // For clients: recipient should be admin (adminUserId)
