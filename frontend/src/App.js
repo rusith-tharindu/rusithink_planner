@@ -1824,6 +1824,7 @@ const Dashboard = () => {
   const [adminUser, setAdminUser] = useState(null);
   const [selectedTask, setSelectedTask] = useState(null);
   const [showUserManagement, setShowUserManagement] = useState(false);
+  const [showChatManagement, setShowChatManagement] = useState(false);
 
   const isAdmin = user?.role === 'admin';
   const isClient = user?.role === 'client';
