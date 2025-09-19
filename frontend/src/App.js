@@ -829,25 +829,42 @@ const AdminChatManager = ({ isVisible, onClose }) => {
 
   const exportClientChat = async (clientId, clientName) => {
     try {
+      console.log('Starting chat export for client:', clientId, clientName);
+      toast.loading('Exporting chat history...', { id: 'chat-export' });
+      
       const response = await axios.get(`${API}/admin/chat/export/${clientId}`, { 
         withCredentials: true,
-        responseType: 'blob'
+        responseType: 'blob',
+        timeout: 30000 // 30 second timeout
       });
       
-      const blob = new Blob([response.data], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `chat_export_${clientName}_${new Date().toISOString().split('T')[0]}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      console.log('Chat export response received:', response.status, response.headers);
       
-      toast.success(`Chat exported for ${clientName}`);
+      if (response.data && response.data.size > 0) {
+        const blob = new Blob([response.data], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `chat_history_${clientName.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        
+        toast.success(`Chat history exported for ${clientName}`, { id: 'chat-export' });
+        console.log('Chat PDF downloaded successfully');
+      } else {
+        throw new Error('Empty response from server');
+      }
     } catch (error) {
       console.error('Error exporting chat:', error);
-      toast.error('Failed to export chat');
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        statusText: error.response?.statusText
+      });
+      toast.error(`Failed to export chat: ${error.response?.data?.detail || error.message}`, { id: 'chat-export' });
     }
   };
 
