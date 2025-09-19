@@ -492,13 +492,7 @@ const AdminChatManager = ({ isVisible, onClose }) => {
   useEffect(() => {
     if (isVisible) {
       fetchConversations();
-      // Refresh conversations every 30 seconds only when dialog is visible
-      const interval = setInterval(() => {
-        if (isVisible && !document.hidden) {
-          fetchConversations();
-        }
-      }, 30000);
-      return () => clearInterval(interval);
+      // No more automatic polling - user can manually refresh
     }
   }, [isVisible]);
 
