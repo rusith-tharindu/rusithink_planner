@@ -1328,6 +1328,477 @@ class ProjectPlannerAPITester:
         
         return success
 
+    # ========== CHAT MESSAGE HISTORY AND CONVERSATION CONTINUITY TESTS ==========
+    
+    def test_chat_message_history_continuity_fix(self):
+        """Test the chat message history and conversation continuity fix - PRIMARY FOCUS"""
+        if not self.admin_cookies:
+            print("❌ No admin session available for chat history test")
+            return False
+        
+        print(f"\n🎯 Testing Chat Message History & Conversation Continuity Fix...")
+        print("   PRIMARY FOCUS: Verify admin messages show up in client chatbox")
+        print("   PRIMARY FOCUS: Verify client's previous messages don't delete")
+        
+        # Create a test client for comprehensive chat testing
+        test_user_data = {
+            "email": "chat_history_test@example.com",
+            "password": "testpass123",
+            "first_name": "ChatHistory",
+            "last_name": "TestUser",
+            "phone": "+1234567800",
+            "company_name": "Chat History Test Company"
+        }
+        
+        success, response, client_cookies = self.run_test(
+            "Create Client for Chat History Test",
+            "POST",
+            "auth/register",
+            200,
+            data=test_user_data
+        )
+        
+        if not success:
+            print("❌ Could not create test client for chat history test")
+            return False
+        
+        client_user_id = response['user']['id']
+        client_name = response['user']['name']
+        print(f"   ✅ Created test client: {client_name} (ID: {client_user_id})")
+        
+        # Get admin info for chat
+        success, admin_info, _ = self.run_test(
+            "Get Admin Info for Chat History Test",
+            "GET",
+            "chat/admin-info",
+            200,
+            cookies=client_cookies
+        )
+        
+        if not success:
+            print("❌ Could not get admin info for chat history test")
+            return False
+        
+        admin_id = admin_info['id']
+        admin_name = admin_info['name']
+        print(f"   ✅ Got admin info: {admin_name} (ID: {admin_id})")
+        
+        # SCENARIO 1: Admin sends Message 1 to Client
+        print(f"\n   📝 SCENARIO 1: Admin sends Message 1 to Client")
+        admin_message_1_data = {
+            "content": "Message 1: Hello from admin - testing chat history fix",
+            "recipient_id": client_user_id
+        }
+        
+        success, admin_msg_1_response, _ = self.run_test(
+            "Admin Sends Message 1 to Client",
+            "POST",
+            "chat/messages",
+            200,
+            data=admin_message_1_data,
+            cookies=self.admin_cookies
+        )
+        
+        if not success:
+            print("❌ CRITICAL: Admin could not send Message 1 to client")
+            return False
+        
+        message_1_id = admin_msg_1_response.get('id')
+        print(f"   ✅ Admin Message 1 sent successfully (ID: {message_1_id})")
+        
+        # SCENARIO 2: Client fetches messages → Should see Message 1
+        print(f"\n   📥 SCENARIO 2: Client fetches messages → Should see Message 1")
+        success, client_messages_after_msg1, _ = self.run_test(
+            "Client Fetches Messages After Admin Message 1",
+            "GET",
+            "chat/messages",
+            200,
+            cookies=client_cookies
+        )
+        
+        if not success:
+            print("❌ CRITICAL: Client could not fetch messages after admin Message 1")
+            return False
+        
+        # Verify client can see admin Message 1
+        admin_message_1_found = False
+        for msg in client_messages_after_msg1:
+            if (msg.get('sender_id') == admin_id and 
+                'Message 1: Hello from admin' in msg.get('content', '')):
+                admin_message_1_found = True
+                print(f"   ✅ SUCCESS: Client can see admin Message 1: '{msg.get('content')[:50]}...'")
+                break
+        
+        if not admin_message_1_found:
+            print("   ❌ CRITICAL FAILURE: Admin Message 1 doesn't show up in client's chatbox!")
+            print(f"   📋 Client messages received: {len(client_messages_after_msg1)}")
+            for i, msg in enumerate(client_messages_after_msg1):
+                print(f"      {i+1}. From: {msg.get('sender_name')} - '{msg.get('content')[:30]}...'")
+            return False
+        
+        # SCENARIO 3: Client sends Message 2 to Admin
+        print(f"\n   📝 SCENARIO 3: Client sends Message 2 to Admin")
+        client_message_2_data = {
+            "content": "Message 2: Reply from client - testing history preservation",
+            "recipient_id": admin_id
+        }
+        
+        success, client_msg_2_response, _ = self.run_test(
+            "Client Sends Message 2 to Admin",
+            "POST",
+            "chat/messages",
+            200,
+            data=client_message_2_data,
+            cookies=client_cookies
+        )
+        
+        if not success:
+            print("❌ CRITICAL: Client could not send Message 2 to admin")
+            return False
+        
+        message_2_id = client_msg_2_response.get('id')
+        print(f"   ✅ Client Message 2 sent successfully (ID: {message_2_id})")
+        
+        # SCENARIO 4: Admin fetches messages → Should see Message 1 + Message 2
+        print(f"\n   📥 SCENARIO 4: Admin fetches messages → Should see Message 1 + Message 2")
+        success, admin_messages_after_msg2, _ = self.run_test(
+            "Admin Fetches Messages After Client Message 2",
+            "GET",
+            f"chat/messages?client_id={client_user_id}",
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        if not success:
+            print("❌ CRITICAL: Admin could not fetch messages after client Message 2")
+            return False
+        
+        # Verify admin can see both Message 1 and Message 2
+        admin_message_1_found_by_admin = False
+        client_message_2_found_by_admin = False
+        
+        for msg in admin_messages_after_msg2:
+            if (msg.get('sender_id') == admin_id and 
+                'Message 1: Hello from admin' in msg.get('content', '')):
+                admin_message_1_found_by_admin = True
+                print(f"   ✅ Admin can see their own Message 1: '{msg.get('content')[:50]}...'")
+            elif (msg.get('sender_id') == client_user_id and 
+                  'Message 2: Reply from client' in msg.get('content', '')):
+                client_message_2_found_by_admin = True
+                print(f"   ✅ Admin can see client Message 2: '{msg.get('content')[:50]}...'")
+        
+        if not admin_message_1_found_by_admin:
+            print("   ❌ FAILURE: Admin cannot see their own Message 1 in conversation")
+            return False
+        
+        if not client_message_2_found_by_admin:
+            print("   ❌ FAILURE: Admin cannot see client Message 2")
+            return False
+        
+        print(f"   ✅ SUCCESS: Admin can see complete conversation (Message 1 + Message 2)")
+        
+        # SCENARIO 5: Admin sends Message 3 to Client
+        print(f"\n   📝 SCENARIO 5: Admin sends Message 3 to Client")
+        admin_message_3_data = {
+            "content": "Message 3: Second admin message - testing complete history",
+            "recipient_id": client_user_id
+        }
+        
+        success, admin_msg_3_response, _ = self.run_test(
+            "Admin Sends Message 3 to Client",
+            "POST",
+            "chat/messages",
+            200,
+            data=admin_message_3_data,
+            cookies=self.admin_cookies
+        )
+        
+        if not success:
+            print("❌ CRITICAL: Admin could not send Message 3 to client")
+            return False
+        
+        message_3_id = admin_msg_3_response.get('id')
+        print(f"   ✅ Admin Message 3 sent successfully (ID: {message_3_id})")
+        
+        # SCENARIO 6: Client fetches messages → Should see Message 1 + Message 2 + Message 3 (COMPLETE HISTORY)
+        print(f"\n   📥 SCENARIO 6: Client fetches messages → Should see COMPLETE HISTORY")
+        print("   🎯 CRITICAL TEST: Verify client's previous messages don't delete")
+        
+        success, client_messages_final, _ = self.run_test(
+            "Client Fetches Final Complete Message History",
+            "GET",
+            "chat/messages",
+            200,
+            cookies=client_cookies
+        )
+        
+        if not success:
+            print("❌ CRITICAL: Client could not fetch final message history")
+            return False
+        
+        # Verify client can see ALL messages: Message 1, Message 2, Message 3
+        admin_message_1_found_final = False
+        client_message_2_found_final = False
+        admin_message_3_found_final = False
+        
+        print(f"   📋 Client received {len(client_messages_final)} messages in final fetch:")
+        
+        for i, msg in enumerate(client_messages_final):
+            sender_name = msg.get('sender_name', 'Unknown')
+            content_preview = msg.get('content', '')[:40]
+            print(f"      {i+1}. From: {sender_name} - '{content_preview}...'")
+            
+            if (msg.get('sender_id') == admin_id and 
+                'Message 1: Hello from admin' in msg.get('content', '')):
+                admin_message_1_found_final = True
+            elif (msg.get('sender_id') == client_user_id and 
+                  'Message 2: Reply from client' in msg.get('content', '')):
+                client_message_2_found_final = True
+            elif (msg.get('sender_id') == admin_id and 
+                  'Message 3: Second admin message' in msg.get('content', '')):
+                admin_message_3_found_final = True
+        
+        # Final verification
+        all_messages_found = True
+        
+        if not admin_message_1_found_final:
+            print("   ❌ CRITICAL FAILURE: Admin Message 1 missing from client's final history!")
+            all_messages_found = False
+        else:
+            print("   ✅ SUCCESS: Admin Message 1 preserved in client history")
+        
+        if not client_message_2_found_final:
+            print("   ❌ CRITICAL FAILURE: Client's own Message 2 deleted from history!")
+            all_messages_found = False
+        else:
+            print("   ✅ SUCCESS: Client's previous Message 2 preserved (not deleted)")
+        
+        if not admin_message_3_found_final:
+            print("   ❌ CRITICAL FAILURE: Admin Message 3 missing from client's final history!")
+            all_messages_found = False
+        else:
+            print("   ✅ SUCCESS: Admin Message 3 visible in client history")
+        
+        # Clean up test client
+        self.run_test(
+            "Cleanup Chat History Test Client",
+            "DELETE",
+            f"admin/users/{client_user_id}",
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        if all_messages_found:
+            print(f"\n   🎉 CHAT MESSAGE HISTORY FIX VERIFICATION: SUCCESS!")
+            print("   ✅ Admin messages show up in client's chatbox")
+            print("   ✅ Client's previous messages are preserved (not deleted)")
+            print("   ✅ Complete conversation history maintained")
+            return True
+        else:
+            print(f"\n   ❌ CHAT MESSAGE HISTORY FIX VERIFICATION: FAILED!")
+            print("   ❌ Critical issues remain with chat message history")
+            return False
+
+    def test_role_based_message_filtering(self):
+        """Test role-based message filtering and privacy controls"""
+        if not self.admin_cookies:
+            print("❌ No admin session available for role-based filtering test")
+            return False
+        
+        print(f"\n🔒 Testing Role-Based Message Filtering...")
+        
+        # Create two test clients
+        client1_data = {
+            "email": "client1_filter@example.com",
+            "password": "testpass123",
+            "first_name": "Client1",
+            "last_name": "FilterTest",
+            "phone": "+1234567801",
+            "company_name": "Client 1 Company"
+        }
+        
+        client2_data = {
+            "email": "client2_filter@example.com",
+            "password": "testpass123",
+            "first_name": "Client2",
+            "last_name": "FilterTest",
+            "phone": "+1234567802",
+            "company_name": "Client 2 Company"
+        }
+        
+        # Create Client 1
+        success, response1, client1_cookies = self.run_test(
+            "Create Client 1 for Filter Test",
+            "POST",
+            "auth/register",
+            200,
+            data=client1_data
+        )
+        
+        if not success:
+            print("❌ Could not create Client 1 for filter test")
+            return False
+        
+        client1_id = response1['user']['id']
+        
+        # Create Client 2
+        success, response2, client2_cookies = self.run_test(
+            "Create Client 2 for Filter Test",
+            "POST",
+            "auth/register",
+            200,
+            data=client2_data
+        )
+        
+        if not success:
+            print("❌ Could not create Client 2 for filter test")
+            return False
+        
+        client2_id = response2['user']['id']
+        
+        # Get admin info
+        success, admin_info, _ = self.run_test(
+            "Get Admin Info for Filter Test",
+            "GET",
+            "chat/admin-info",
+            200,
+            cookies=client1_cookies
+        )
+        
+        if not success:
+            print("❌ Could not get admin info for filter test")
+            return False
+        
+        admin_id = admin_info['id']
+        
+        # Admin sends message to Client 1
+        admin_to_client1_data = {
+            "content": "Private message from admin to Client 1",
+            "recipient_id": client1_id
+        }
+        
+        success, _, _ = self.run_test(
+            "Admin Sends Private Message to Client 1",
+            "POST",
+            "chat/messages",
+            200,
+            data=admin_to_client1_data,
+            cookies=self.admin_cookies
+        )
+        
+        if not success:
+            print("❌ Admin could not send message to Client 1")
+            return False
+        
+        # Admin sends message to Client 2
+        admin_to_client2_data = {
+            "content": "Private message from admin to Client 2",
+            "recipient_id": client2_id
+        }
+        
+        success, _, _ = self.run_test(
+            "Admin Sends Private Message to Client 2",
+            "POST",
+            "chat/messages",
+            200,
+            data=admin_to_client2_data,
+            cookies=self.admin_cookies
+        )
+        
+        if not success:
+            print("❌ Admin could not send message to Client 2")
+            return False
+        
+        # Test 1: Client 1 should only see their conversation with admin
+        success, client1_messages, _ = self.run_test(
+            "Client 1 Fetches Messages (Privacy Test)",
+            "GET",
+            "chat/messages",
+            200,
+            cookies=client1_cookies
+        )
+        
+        if not success:
+            print("❌ Client 1 could not fetch messages")
+            return False
+        
+        # Verify Client 1 can see admin's message to them but not to Client 2
+        client1_sees_own_message = False
+        client1_sees_other_message = False
+        
+        for msg in client1_messages:
+            if 'Private message from admin to Client 1' in msg.get('content', ''):
+                client1_sees_own_message = True
+            elif 'Private message from admin to Client 2' in msg.get('content', ''):
+                client1_sees_other_message = True
+        
+        if client1_sees_own_message:
+            print("   ✅ Client 1 can see admin's message to them")
+        else:
+            print("   ❌ Client 1 cannot see admin's message to them")
+            return False
+        
+        if not client1_sees_other_message:
+            print("   ✅ Client 1 cannot see admin's message to Client 2 (privacy maintained)")
+        else:
+            print("   ❌ PRIVACY BREACH: Client 1 can see admin's message to Client 2!")
+            return False
+        
+        # Test 2: Admin can fetch specific client conversation using client_id
+        success, admin_client1_messages, _ = self.run_test(
+            "Admin Fetches Client 1 Conversation",
+            "GET",
+            f"chat/messages?client_id={client1_id}",
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        if not success:
+            print("❌ Admin could not fetch Client 1 conversation")
+            return False
+        
+        # Verify admin sees only Client 1 conversation
+        admin_sees_client1_msg = False
+        admin_sees_client2_msg = False
+        
+        for msg in admin_client1_messages:
+            if 'Private message from admin to Client 1' in msg.get('content', ''):
+                admin_sees_client1_msg = True
+            elif 'Private message from admin to Client 2' in msg.get('content', ''):
+                admin_sees_client2_msg = True
+        
+        if admin_sees_client1_msg:
+            print("   ✅ Admin can see Client 1 conversation when using client_id parameter")
+        else:
+            print("   ❌ Admin cannot see Client 1 conversation with client_id parameter")
+            return False
+        
+        if not admin_sees_client2_msg:
+            print("   ✅ Admin client_id filtering works - only sees specified client conversation")
+        else:
+            print("   ❌ Admin client_id filtering broken - sees other client messages")
+            return False
+        
+        # Clean up test clients
+        self.run_test(
+            "Cleanup Filter Test Client 1",
+            "DELETE",
+            f"admin/users/{client1_id}",
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        self.run_test(
+            "Cleanup Filter Test Client 2",
+            "DELETE",
+            f"admin/users/{client2_id}",
+            200,
+            cookies=self.admin_cookies
+        )
+        
+        print("   ✅ Role-based message filtering and privacy controls working correctly")
+        return True
+
     # ========== CHAT SYSTEM VERIFICATION TESTS ==========
     
     def test_chat_system_basic_functionality(self):
