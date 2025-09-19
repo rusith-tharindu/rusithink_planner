@@ -438,6 +438,10 @@ test_plan:
     - "Chat Message History and Conversation Continuity Fix"
     - "Client Chat Message Visibility Debug"
     - "Admin Chat Delete Functionality"
+    - "User Management Delete Functionality - Single User Delete"
+    - "User Management Delete Functionality - Bulk User Delete"
+    - "User Management API Endpoints"
+    - "Chat Export as PDF Functionality"
 
 agent_communication:
   - agent: "main"
