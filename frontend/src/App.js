@@ -2162,7 +2162,7 @@ const Dashboard = () => {
             <div className="space-y-6">
               {/* Project Timeline */}
               {selectedTask && (
-                <Card className="bg-slate-900/50 border-slate-700/30">
+                <Card className="bg-gray-900/50 border-gray-700/30">
                   <CardContent className="p-6">
                     <ProjectTimeline task={selectedTask} user={user} />
                   </CardContent>
@@ -2171,7 +2171,7 @@ const Dashboard = () => {
 
               {/* Chat System */}
               {adminUser && (
-                <Card className="bg-slate-900/50 border-slate-700/30">
+                <Card className="bg-gray-900/50 border-gray-700/30">
                   <CardContent className="p-6">
                     <ChatSystem 
                       user={user} 
