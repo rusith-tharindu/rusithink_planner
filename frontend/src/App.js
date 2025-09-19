@@ -495,6 +495,30 @@ const AdminChatManager = ({ isVisible, onClose }) => {
     }
   };
 
+  const deleteConversation = async (clientId, clientName) => {
+    if (!window.confirm(`Are you sure you want to delete the entire conversation with ${clientName}? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const response = await axios.delete(`${API}/admin/chat/conversation/${clientId}`, { 
+        withCredentials: true 
+      });
+      
+      toast.success(response.data.message);
+      fetchConversations();
+      
+      // If we're currently viewing this client's chat, clear the selection
+      if (selectedClient?.client_id === clientId) {
+        setSelectedClient(null);
+      }
+    } catch (error) {
+      console.error('Error deleting conversation:', error);
+      const errorMsg = error.response?.data?.detail || 'Failed to delete conversation';
+      toast.error(errorMsg);
+    }
+  };
+
   useEffect(() => {
     if (isVisible) {
       fetchConversations();
@@ -506,7 +530,7 @@ const AdminChatManager = ({ isVisible, onClose }) => {
 
   return (
     <Dialog open={isVisible} onOpenChange={onClose}>
-      <DialogContent className="bg-slate-900 border-slate-700 text-slate-100 max-w-6xl max-h-[90vh] overflow-hidden">
+      <DialogContent className="bg-gray-900 border-gray-700 text-white max-w-6xl max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -523,25 +547,25 @@ const AdminChatManager = ({ isVisible, onClose }) => {
               Refresh
             </Button>
           </DialogTitle>
-          <DialogDescription className="text-slate-400">
+          <DialogDescription className="text-gray-400">
             View and manage conversations with all clients
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex h-[70vh] gap-4">
           {/* Conversations List */}
-          <div className="w-1/3 border-r border-slate-700 pr-4">
-            <h3 className="text-lg font-semibold text-slate-100 mb-4">Client Conversations</h3>
+          <div className="w-1/3 border-r border-gray-700 pr-4">
+            <h3 className="text-lg font-semibold text-white mb-4">Client Conversations</h3>
             
             {loading ? (
               <div className="text-center py-8">
-                <div className="loading-spinner mx-auto mb-4"></div>
-                <p className="text-slate-400">Loading conversations...</p>
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400 mb-4"></div>
+                <p className="text-gray-400">Loading conversations...</p>
               </div>
             ) : conversations.length === 0 ? (
               <div className="text-center py-8">
-                <MessageSquare className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-                <p className="text-slate-400">No conversations yet</p>
+                <MessageSquare className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+                <p className="text-gray-400">No conversations yet</p>
               </div>
             ) : (
               <div className="space-y-2 overflow-y-auto max-h-full">
@@ -551,7 +575,7 @@ const AdminChatManager = ({ isVisible, onClose }) => {
                     className={`cursor-pointer transition-all ${
                       selectedClient?.client_id === conv.client_id
                         ? 'bg-blue-900/20 border-blue-700/30'
-                        : 'bg-slate-800/30 border-slate-700/30 hover:bg-slate-800/50'
+                        : 'bg-gray-800/30 border-gray-700/30 hover:bg-gray-800/50'
                     }`}
                     onClick={() => setSelectedClient(conv)}
                   >
@@ -559,40 +583,54 @@ const AdminChatManager = ({ isVisible, onClose }) => {
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-medium text-slate-100">{conv.client_name}</h4>
+                            <h4 className="font-medium text-white">{conv.client_name}</h4>
                             {conv.unread_count > 0 && (
-                              <Badge className="bg-orange-600 text-white text-xs">
+                              <Badge className="bg-yellow-600 text-black text-xs font-semibold">
                                 {conv.unread_count}
                               </Badge>
                             )}
                           </div>
-                          <p className="text-xs text-slate-400">{conv.client_email}</p>
+                          <p className="text-xs text-gray-400">{conv.client_email}</p>
                           {conv.client_company && (
-                            <p className="text-xs text-slate-500">{conv.client_company}</p>
+                            <p className="text-xs text-gray-500">{conv.client_company}</p>
                           )}
                           {conv.last_message && (
-                            <p className="text-xs text-slate-400 mt-2 truncate">
+                            <p className="text-xs text-gray-400 mt-2 truncate">
                               {conv.last_message}...
                             </p>
                           )}
                           {conv.last_message_time && (
-                            <p className="text-xs text-slate-500 mt-1">
+                            <p className="text-xs text-gray-500 mt-1">
                               {format(new Date(conv.last_message_time), 'MMM dd, HH:mm')}
                             </p>
                           )}
                         </div>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            exportClientChat(conv.client_id, conv.client_name);
-                          }}
-                          className="text-green-400 hover:text-green-300 hover:bg-green-900/20"
-                          title="Export chat history"
-                        >
-                          <Download className="w-3 h-3" />
-                        </Button>
+                        <div className="flex flex-col gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              exportClientChat(conv.client_id, conv.client_name);
+                            }}
+                            className="text-green-400 hover:text-green-300 hover:bg-green-900/20"
+                            title="Export chat history"
+                          >
+                            <Download className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteConversation(conv.client_id, conv.client_name);
+                            }}
+                            className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                            title="Delete entire conversation"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -607,18 +645,27 @@ const AdminChatManager = ({ isVisible, onClose }) => {
               <div className="h-full">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h3 className="text-lg font-semibold text-slate-100">
+                    <h3 className="text-lg font-semibold text-white">
                       Chat with {selectedClient.client_name}
                     </h3>
-                    <p className="text-sm text-slate-400">{selectedClient.client_email}</p>
+                    <p className="text-sm text-gray-400">{selectedClient.client_email}</p>
                   </div>
-                  <Button
-                    onClick={() => exportClientChat(selectedClient.client_id, selectedClient.client_name)}
-                    className="bg-green-600 hover:bg-green-700 text-white"
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Export Chat
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => exportClientChat(selectedClient.client_id, selectedClient.client_name)}
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Export Chat
+                    </Button>
+                    <Button
+                      onClick={() => deleteConversation(selectedClient.client_id, selectedClient.client_name)}
+                      className="bg-red-600 hover:bg-red-700 text-white"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete Chat
+                    </Button>
+                  </div>
                 </div>
                 
                 <ChatSystem 
@@ -628,9 +675,9 @@ const AdminChatManager = ({ isVisible, onClose }) => {
                 />
               </div>
             ) : (
-              <div className="flex items-center justify-center h-full text-slate-400">
+              <div className="flex items-center justify-center h-full text-gray-400">
                 <div className="text-center">
-                  <MessageSquare className="w-16 h-16 mx-auto mb-4 text-slate-600" />
+                  <MessageSquare className="w-16 h-16 mx-auto mb-4 text-gray-600" />
                   <p>Select a client to view conversation</p>
                 </div>
               </div>
