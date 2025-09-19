@@ -396,6 +396,7 @@ test_plan:
   test_priority: "high_first"
   completed_focus:
     - "Chat Message History and Conversation Continuity Fix"
+    - "Client Chat Message Visibility Debug"
 
 agent_communication:
   - agent: "main"
