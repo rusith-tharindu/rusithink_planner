@@ -437,7 +437,6 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Admin Chat Delete Functionality"
     - "Admin User Management Table UI"
     - "Client Registration Form with Address"
   stuck_tasks: []
@@ -451,6 +450,7 @@ test_plan:
     - "User Management Delete Functionality - Bulk User Delete"
     - "User Management API Endpoints"
     - "Chat Export as PDF Functionality"
+    - "Chat Management Frontend UI Testing"
 
 agent_communication:
   - agent: "main"
