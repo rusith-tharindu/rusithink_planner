@@ -1550,7 +1550,7 @@ async def get_admin_chat_conversations(request: Request):
             conversations.append(conversation_info)
         
         # Sort by last message time (most recent first)
-        conversations.sort(key=lambda x: x["last_message_time"] or datetime.min, reverse=True)
+        conversations.sort(key=lambda x: x["last_message_time"] or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
         
         return conversations
         
