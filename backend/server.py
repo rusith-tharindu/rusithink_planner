@@ -1413,6 +1413,135 @@ async def admin_create_task_for_client(task_data: TaskCreate, client_email: str,
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create task: {str(e)}")
 
+@api_router.get("/admin/chat/export/{client_id}")
+async def export_client_chat(client_id: str, request: Request):
+    """Export chat messages for a specific client (admin only)"""
+    await require_admin(request)
+    
+    try:
+        # Get client user info
+        client_user = await db.users.find_one({"id": client_id})
+        if not client_user:
+            raise HTTPException(status_code=404, detail="Client not found")
+        
+        client_user = parse_from_mongo(client_user)
+        
+        # Get admin user (assuming there's only one admin)
+        admin_user = await db.users.find_one({"role": "admin"})
+        if not admin_user:
+            raise HTTPException(status_code=404, detail="Admin user not found")
+        
+        admin_user = parse_from_mongo(admin_user)
+        
+        # Fetch all messages between admin and this client
+        messages = await db.chat_messages.find({
+            "$or": [
+                {"sender_id": client_id, "recipient_id": admin_user["id"]},
+                {"sender_id": admin_user["id"], "recipient_id": client_id}
+            ]
+        }).sort("created_at", 1).to_list(1000)
+        
+        # Prepare CSV data
+        import io
+        import csv
+        
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # CSV headers
+        writer.writerow([
+            'Date & Time', 'Sender', 'Role', 'Message Type', 'Content', 'File Name', 'Task ID'
+        ])
+        
+        # Process messages
+        for msg in messages:
+            msg = parse_from_mongo(msg)
+            
+            # Format datetime
+            created_at = msg.get('created_at', '')
+            if isinstance(created_at, datetime):
+                formatted_date = created_at.strftime('%Y-%m-%d %H:%M:%S')
+            else:
+                formatted_date = str(created_at)[:19]  # Take first 19 chars for datetime format
+            
+            writer.writerow([
+                formatted_date,
+                msg.get('sender_name', ''),
+                msg.get('sender_role', '').upper(),
+                msg.get('message_type', 'text').upper(),
+                msg.get('content', ''),
+                msg.get('file_name', ''),
+                msg.get('task_id', '')
+            ])
+        
+        # Prepare response
+        csv_content = output.getvalue()
+        output.close()
+        
+        client_name = client_user.get('name', client_user.get('email', 'unknown'))
+        filename = f"chat_export_{client_name}_{datetime.now().strftime('%Y%m%d')}.csv"
+        
+        return StreamingResponse(
+            io.BytesIO(csv_content.encode('utf-8')),
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to export chat: {str(e)}")
+
+@api_router.get("/admin/chat/conversations")
+async def get_admin_chat_conversations(request: Request):
+    """Get list of all client conversations for admin"""
+    await require_admin(request)
+    
+    try:
+        # Get all clients
+        clients = await db.users.find({"role": "client"}).to_list(100)
+        
+        conversations = []
+        for client in clients:
+            client = parse_from_mongo(client)
+            
+            # Get latest message with this client
+            latest_msg = await db.chat_messages.find({
+                "$or": [
+                    {"sender_id": client["id"]},
+                    {"recipient_id": client["id"]}
+                ]
+            }).sort("created_at", -1).limit(1).to_list(1)
+            
+            # Count unread messages from this client
+            unread_count = await db.chat_messages.count_documents({
+                "sender_id": client["id"],
+                "is_read": False
+            })
+            
+            conversation_info = {
+                "client_id": client["id"],
+                "client_name": client.get("name", "Unknown"),
+                "client_email": client.get("email", ""),
+                "client_company": client.get("company_name", ""),
+                "unread_count": unread_count,
+                "last_message": None,
+                "last_message_time": None
+            }
+            
+            if latest_msg:
+                msg = parse_from_mongo(latest_msg[0])
+                conversation_info["last_message"] = msg.get("content", "")[:50]
+                conversation_info["last_message_time"] = msg.get("created_at")
+            
+            conversations.append(conversation_info)
+        
+        # Sort by last message time (most recent first)
+        conversations.sort(key=lambda x: x["last_message_time"] or datetime.min, reverse=True)
+        
+        return conversations
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch conversations: {str(e)}")
+
 # Include the router in the main app
 app.include_router(api_router)
 
