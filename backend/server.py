@@ -1957,7 +1957,7 @@ async def calculate_admin_analytics(month_year: str = None):
         project_completion_rate = (completed_projects / total_projects * 100) if total_projects > 0 else 0
         
         # Calculate client metrics
-        client_ids_this_month = set(task.get("created_by") for task in month_tasks)
+        client_ids_this_month = set(task.get("created_by") for task in month_tasks if task.get("created_by") is not None)
         active_clients = len(client_ids_this_month)
         
         # Get new clients this month
